@@ -1,0 +1,54 @@
+# =============================================================================
+# MODO SIMULACION: sustituye los USB por la planta simulada (firmware real del
+# ESP32 + 3 sensores Modbus + fisica del v3). El codigo de los servicios es el
+# MISMO que en el huerto; solo cambian puertos y nombres.
+#
+# Se activa en .env:   COMPOSE_FILE=docker-compose.yml:docker-compose.sim.yml
+# Necesita Docker Compose >= 2.24 (por "!reset"): docker compose version
+#
+# Separaciones para que la simulacion nunca se confunda con el huerto:
+#   - MongoDB en otra carpeta (mongo-sim)
+#   - MQTT con prefijo uao/vermicompost/sim (el receptor del laboratorio tiene
+#     que abrirse con el mismo prefijo para verla)
+# =============================================================================
+services:
+  planta:
+    build:
+      context: .
+      dockerfile: simulador/Dockerfile
+    container_name: planta-simulada
+    restart: unless-stopped
+    environment:
+      ESCALA: ${ESCALA:-10}          # la cama "vive" 10 veces mas rapido
+      VWC_CC: "35"
+    ports:
+      - "127.0.0.1:7003:7003"        # API de pruebas: estado, fallas
+
+  mongodb:
+    volumes:
+      - ${DATOS_DIR:-../vermi-datos}/mongo-sim:/data/db
+
+  nodered:
+    environment:
+      MQTT_PREFIJO: uao/vermicompost/sim
+
+  sensores:
+    depends_on: [mongodb, planta]
+    devices: !reset []
+    environment:
+      MODO: prueba
+      PUERTO_SERIE: socket://planta:7002
+      INTERVALO_MUESTREO_S: "30"
+      MQTT_TOPICO_TIEMPO_REAL: uao/vermicompost/sim/datos
+      MQTT_TOPICO_LOTE: uao/vermicompost/sim/lote
+      MQTT_CLIENT_ID: rpi5-sim-sensores
+
+  actuadores:
+    depends_on: [mongodb, planta]
+    devices: !reset []
+    environment:
+      PUERTO_ESP32: socket://planta:7001
+
+  control:
+    environment:
+      TS_S: "30"

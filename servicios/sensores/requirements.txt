@@ -1,0 +1,4 @@
+pyserial==3.5
+paho-mqtt>=2.0,<3
+pymongo>=4.6,<5
+tzdata

@@ -1,0 +1,632 @@
+[
+    {
+        "id": "32de9759379fb6d6",
+        "type": "tab",
+        "label": "Flujo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "5e75d88bef6fa344",
+        "type": "tab",
+        "label": "Vermicompost",
+        "disabled": false,
+        "info": "Dashboard por día (en vivo o histórico) desde MongoDB, rangos objetivo y lote por MQTT."
+    },
+    {
+        "id": "mongo_cfg",
+        "type": "mongodb4-client",
+        "name": "MongoDB local",
+        "protocol": "mongodb",
+        "hostname": "mongodb",
+        "port": "27017",
+        "dbName": "vermicompost",
+        "appName": "nodered",
+        "authSource": "",
+        "authMechanism": "",
+        "tls": false,
+        "tlsCAFile": "",
+        "tlsCertificateKeyFile": "",
+        "tlsInsecure": false,
+        "connectTimeoutMS": "30000",
+        "socketTimeoutMS": "0",
+        "minPoolSize": "0",
+        "maxPoolSize": "10",
+        "maxIdleTimeMS": "0",
+        "uri": "",
+        "advanced": "{}",
+        "uriTabActive": "tab-uri-simple"
+    },
+    {
+        "id": "mqtt_cfg",
+        "type": "mqtt-broker",
+        "name": "HiveMQ público",
+        "broker": "broker.hivemq.com",
+        "port": "1883",
+        "clientid": "rpi5-nodered-lote",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "ui_base",
+        "type": "ui-base",
+        "name": "Vermicompost",
+        "path": "/dashboard",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "navigationStyle": "default",
+        "titleBarStyle": "default"
+    },
+    {
+        "id": "ui_theme",
+        "type": "ui-theme",
+        "name": "Tema UAO",
+        "colors": {
+            "surface": "#2e7d32",
+            "primary": "#2e7d32",
+            "bgPage": "#f4f6f4",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "6px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "ui_page",
+        "type": "ui-page",
+        "name": "Monitoreo de camas",
+        "ui": "ui_base",
+        "path": "/monitoreo",
+        "icon": "sprout",
+        "layout": "grid",
+        "theme": "ui_theme",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "tabs": [],
+        "order": 1,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "ae8870cdfb8a2f65",
+        "type": "ui-group",
+        "name": "Panel",
+        "page": "ui_page",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": false,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "432d540cc0c52cc5",
+        "type": "ui-group",
+        "name": "Estado actual de la cama",
+        "page": "ui_page",
+        "width": "12",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "a09c5cf9e4132064",
+        "type": "ui-group",
+        "name": "Comportamiento del día",
+        "page": "ui_page",
+        "width": "12",
+        "height": "1",
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "6579cea4e77173b2",
+        "type": "ui-group",
+        "name": "Calidad del sustrato",
+        "page": "ui_page",
+        "width": "12",
+        "height": "1",
+        "order": 4,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "d83cc15b62c707d2",
+        "type": "comment",
+        "z": "5e75d88bef6fa344",
+        "name": "0) Rangos objetivo: editar aquí (Doc. Especificaciones técnicas de sensores y nodos IoT)",
+        "info": "",
+        "x": 370,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "5f1417bb3f09dbde",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Rangos objetivo",
+        "func": "return msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "// optimo = verde ; aceptable = amarillo ; fuera de aceptable = rojo\nflow.set('rangos', {\n    \"humedad_pct\": {\n        \"nombre\": \"Humedad\",\n        \"unidad\": \"%\",\n        \"optimo\": [\n            70,\n            85\n        ],\n        \"aceptable\": [\n            60,\n            90\n        ],\n        \"nota\": \"Óptimo 70–85%. <60%: Estrés hídrico. >90%: Anaerobiosis.\"\n    },\n    \"temperatura_C\": {\n        \"nombre\": \"Temperatura\",\n        \"unidad\": \"°C\",\n        \"optimo\": [\n            15,\n            25\n        ],\n        \"aceptable\": [\n            10,\n            35\n        ],\n        \"ideal\": 20,\n        \"nota\": \"Óptimo 15–25°C, Ideal ≈20°C. <10°C: Letargo. >35°C: Aumenta la mortalidad.\"\n    },\n    \"ph\": {\n        \"nombre\": \"pH\",\n        \"unidad\": \"\",\n        \"optimo\": [\n            6.5,\n            7.5\n        ],\n        \"aceptable\": [\n            6,\n            8.5\n        ],\n        \"ideal\": 7,\n        \"nota\": \"Óptimo 6,5–7,5, Ideal 7,0. <6: Mala digestión. >8,5: Inhibe la actividad microbiana.\"\n    }\n});",
+        "finalize": "",
+        "libs": [],
+        "x": 140,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c7792faaf740efd9",
+        "type": "comment",
+        "z": "5e75d88bef6fa344",
+        "name": "1) Dashboard por día: hoy en vivo (cada 60 s) o una fecha elegida",
+        "info": "",
+        "x": 310,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ba851215c0e3014f",
+        "type": "inject",
+        "z": "5e75d88bef6fa344",
+        "name": "Cada 60 s",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "refresco",
+        "x": 130,
+        "y": 200,
+        "wires": [
+            [
+                "693d2ae92fef54ce"
+            ]
+        ]
+    },
+    {
+        "id": "cf400f07986b5a8d",
+        "type": "ui-template",
+        "z": "5e75d88bef6fa344",
+        "group": "ae8870cdfb8a2f65",
+        "page": "",
+        "ui": "",
+        "name": "Panel de control",
+        "order": 1,
+        "width": "12",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"vc-panel\">\n    <div class=\"vc-titulo\">\n      <v-icon size=\"34\" color=\"#2e7d32\">mdi-sprout</v-icon>\n      <div>\n        <div class=\"vc-h1\">Monitoreo de vermicompostaje</div>\n        <div class=\"vc-sub\">HuertoLab UAO · Proyecto Minciencias 113982</div>\n      </div>\n    </div>\n\n    <div class=\"vc-controles\">\n      <span class=\"vc-estado\" :class=\"enVivo ? 'vivo' : 'hist'\">\n        <span class=\"punto\"></span>{{ enVivo ? 'EN VIVO' : 'HISTÓRICO' }}\n      </span>\n      <span class=\"vc-info\">{{ textoFecha }} · {{ total }} lecturas</span>\n\n      <input type=\"date\" class=\"vc-fecha\" :value=\"fecha\" :max=\"hoy\" @change=\"elegirFecha($event.target.value)\">\n      <v-btn variant=\"tonal\" color=\"#2e7d32\" prepend-icon=\"mdi-calendar-today\" :disabled=\"enVivo\" @click=\"irHoy\">Hoy</v-btn>\n      <v-btn variant=\"flat\" color=\"#2e7d32\" prepend-icon=\"mdi-cloud-upload\" :loading=\"enviando\" @click=\"enviarLote\">\n        Enviar lote de este día\n      </v-btn>\n    </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() { return { enviando: false } },\n  computed: {\n    hoy() {\n      const d = new Date(), p = n => String(n).padStart(2, '0');\n      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;\n    },\n    fecha()  { return this.msg?.payload?.fecha || this.hoy },\n    enVivo() { return this.msg?.payload ? !!this.msg.payload.enVivo : true },\n    total()  { return this.msg?.payload?.total ?? 0 },\n    textoFecha() {\n      const [a, m, d] = this.fecha.split('-').map(Number);\n      return new Date(a, m - 1, d).toLocaleDateString('es-CO',\n        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });\n    }\n  },\n  watch: { msg() { this.enviando = false } },\n  methods: {\n    elegirFecha(f) { if (f) this.send({ topic: 'fecha', payload: f }) },\n    irHoy()        { this.send({ topic: 'hoy' }) },\n    enviarLote()   { this.enviando = true; this.send({ topic: 'lote', payload: this.fecha });\n                     setTimeout(() => { this.enviando = false }, 4000) }\n  }\n}\n</script>\n\n<style scoped>\n.vc-panel { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; width:100%; }\n.vc-titulo { display:flex; align-items:center; gap:12px; }\n.vc-h1 { font-size:1.35rem; font-weight:700; color:#1b5e20; line-height:1.2; }\n.vc-sub { font-size:.85rem; color:#6b7a6b; }\n.vc-controles { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }\n.vc-estado { display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:700;\n             letter-spacing:.06em; padding:4px 10px; border-radius:999px; }\n.vc-estado.vivo { background:#e8f5e9; color:#2e7d32; }\n.vc-estado.hist { background:#fff3e0; color:#e65100; }\n.vc-estado .punto { width:8px; height:8px; border-radius:50%; background:currentColor; }\n.vc-estado.vivo .punto { animation: latido 1.6s infinite; }\n@keyframes latido { 0%,100% { opacity:1 } 50% { opacity:.25 } }\n.vc-info { color:#5b6b5b; font-size:.9rem; text-transform:capitalize; }\n.vc-fecha { border:1px solid #c8d3c8; border-radius:8px; padding:6px 10px; font-size:.95rem; color:#1b5e20; background:#fff; }\n</style>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 130,
+        "y": 260,
+        "wires": [
+            [
+                "693d2ae92fef54ce"
+            ]
+        ]
+    },
+    {
+        "id": "693d2ae92fef54ce",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Control de fecha",
+        "func": "// Salida 1: consultar el dia mostrado | Salida 2: pedir lote de ese dia\nconst p = n => String(n).padStart(2, '0');\nconst h = new Date();\nconst hoy = `${h.getFullYear()}-${p(h.getMonth() + 1)}-${p(h.getDate())}`;\nlet sel = flow.get('fechaSel') || null;\n\nswitch (msg.topic) {\n    case 'fecha': {\n        const f = String(msg.payload).slice(0, 10);\n        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(f)) return null;\n        sel = (f >= hoy) ? null : f;\n        flow.set('fechaSel', sel);\n        break;\n    }\n    case 'hoy':\n        sel = null;\n        flow.set('fechaSel', null);\n        break;\n    case 'lote':\n        return [null, { fecha: sel || hoy, origen: 'dashboard' }];\n    case 'refresco':\n        // En modo historico los datos no cambian: no hace falta reconsultar\n        if (sel) return null;\n        break;\n}\nreturn [{ fecha: sel || hoy, enVivo: !sel }, null];",
+        "outputs": 2,
+        "initialize": "flow.set('fechaSel', null);",
+        "x": 330,
+        "y": 230,
+        "wires": [
+            [
+                "8901724217a3f869"
+            ],
+            [
+                "85364fb6ef87e82e"
+            ]
+        ]
+    },
+    {
+        "id": "8901724217a3f869",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Consulta del día",
+        "func": "msg.payload = [\n    { fecha: msg.fecha, sitio: 'huertolab' },\n    { sort: { timestamp: 1 }, projection: { _id: 0 } }\n];\nreturn msg;",
+        "outputs": 1,
+        "x": 530,
+        "y": 200,
+        "wires": [
+            [
+                "6e14049a491026f6"
+            ]
+        ]
+    },
+    {
+        "id": "6e14049a491026f6",
+        "type": "mongodb4",
+        "z": "5e75d88bef6fa344",
+        "clientNode": "mongo_cfg",
+        "mode": "collection",
+        "collection": "lecturas",
+        "operation": "find",
+        "output": "toArray",
+        "maxTimeMS": "0",
+        "handleDocId": false,
+        "name": "lecturas del día",
+        "x": 720,
+        "y": 200,
+        "wires": [
+            [
+                "9a789ffb11619d41"
+            ]
+        ]
+    },
+    {
+        "id": "9a789ffb11619d41",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Armar vista",
+        "func": "const VARS = [\"humedad_pct\", \"temperatura_C\", \"conductividad_uScm\", \"ph\", \"nitrogeno_mgkg\", \"fosforo_mgkg\", \"potasio_mgkg\"];\nconst R = flow.get('rangos') || {};\nconst dia = Array.isArray(msg.payload) ? msg.payload : [];\nconst p = n => String(n).padStart(2, '0');\nconst t = d => new Date(d.timestamp).getTime();\nconst inicio = new Date(msg.fecha + 'T00:00:00').getTime();\n\n// Ultima lectura de cada sensor\nconst ult = {};\nfor (const d of dia) ult[d.sensor_id] = d;          // vienen ordenadas por hora\nconst sensores = Object.values(ult).sort((a, b) => a.sensor_id - b.sensor_id)\n    .map(d => ({ sensor: d.sensor_id, t: t(d), valores: Object.fromEntries(VARS.map(k => [k, d[k]])) }));\n\n// Series del dia por sensor\nconst ids = [...new Set(dia.map(d => d.sensor_id))].sort((a, b) => a - b);\nconst series = {};\nfor (const k of VARS) {\n    series[k] = ids.map(id => ({ sensor: id,\n        puntos: dia.filter(d => d.sensor_id === id && typeof d[k] === 'number').map(d => [t(d), d[k]]) }));\n}\n\nmsg.payload = {\n    fecha: msg.fecha, enVivo: msg.enVivo, total: dia.length, ahora: Date.now(),\n    inicio, fin: inicio + 864e5, intervaloS: 300, rangos: R, sensores, series\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 930,
+        "y": 200,
+        "wires": [
+            [
+                "cf400f07986b5a8d",
+                "81adc742dba95a55",
+                "47da66e33686a577",
+                "a4f5aec6680e10cb"
+            ]
+        ]
+    },
+    {
+        "id": "81adc742dba95a55",
+        "type": "ui-template",
+        "z": "5e75d88bef6fa344",
+        "group": "432d540cc0c52cc5",
+        "page": "",
+        "ui": "",
+        "name": "Tarjetas de estado",
+        "order": 1,
+        "width": "12",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div v-if=\"!sensores.length\" class=\"vc-vacio\">\n    <v-icon size=\"40\" color=\"#9aa89a\">mdi-database-off-outline</v-icon>\n    <div>No hay lecturas para este día.</div>\n  </div>\n\n  <div v-for=\"s in sensores\" :key=\"s.sensor\" class=\"vc-sensor\">\n    <div class=\"vc-sensor-cab\">\n      <span class=\"vc-chip\">Sensor {{ s.sensor }}</span>\n      <span class=\"vc-hora\"><v-icon size=\"16\">mdi-clock-outline</v-icon> {{ hora(s.t) }}</span>\n      <span v-if=\"viejo(s)\" class=\"vc-alerta rojo\">\n        <v-icon size=\"16\">mdi-alert-circle</v-icon> Sin lecturas desde hace {{ minutos(s) }} min: revisar sensor o comunicación\n      </span>\n      <span v-if=\"alAire(s)\" class=\"vc-alerta ambar\">\n        <v-icon size=\"16\">mdi-alert</v-icon> Humedad y conductividad en 0: el sensor podría estar fuera del sustrato\n      </span>\n      <span v-if=\"saturado(s)\" class=\"vc-alerta ambar\">\n        <v-icon size=\"16\">mdi-alert</v-icon> Humedad en 100 %: posible saturación o falta de calibración\n      </span>\n    </div>\n\n    <div class=\"vc-grid\">\n      <div v-for=\"v in variables\" :key=\"v.k\" class=\"vc-tile\" :class=\"estado(v.k, s.valores[v.k])\"\n           :style=\"{ borderTopColor: v.color }\">\n        <div class=\"vc-tile-cab\">\n          <v-icon size=\"18\" :color=\"v.color\">{{ v.icono }}</v-icon>\n          <span>{{ v.nombre }}</span>\n        </div>\n        <div class=\"vc-valor\">{{ formato(s.valores[v.k]) }}<span class=\"vc-unidad\">{{ v.unidad }}</span></div>\n        <div v-if=\"rangos[v.k]\" class=\"vc-rango\">\n          <span class=\"vc-badge\">{{ etiqueta(estado(v.k, s.valores[v.k])) }}</span>\n          <span class=\"vc-ref\">óptimo {{ txtRango(rangos[v.k]) }}</span>\n        </div>\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() { return { variables: [{\"k\": \"humedad_pct\", \"nombre\": \"Humedad\", \"unidad\": \"%\", \"icono\": \"mdi-water-percent\", \"color\": \"#1e88e5\"}, {\"k\": \"temperatura_C\", \"nombre\": \"Temperatura\", \"unidad\": \"°C\", \"icono\": \"mdi-thermometer\", \"color\": \"#e53935\"}, {\"k\": \"ph\", \"nombre\": \"pH\", \"unidad\": \"\", \"icono\": \"mdi-ph\", \"color\": \"#8e24aa\"}, {\"k\": \"conductividad_uScm\", \"nombre\": \"Conductividad\", \"unidad\": \"µS/cm\", \"icono\": \"mdi-flash\", \"color\": \"#fb8c00\"}, {\"k\": \"nitrogeno_mgkg\", \"nombre\": \"Nitrógeno (N)\", \"unidad\": \"mg/kg\", \"icono\": \"mdi-leaf\", \"color\": \"#43a047\"}, {\"k\": \"fosforo_mgkg\", \"nombre\": \"Fósforo (P)\", \"unidad\": \"mg/kg\", \"icono\": \"mdi-leaf\", \"color\": \"#00897b\"}, {\"k\": \"potasio_mgkg\", \"nombre\": \"Potasio (K)\", \"unidad\": \"mg/kg\", \"icono\": \"mdi-leaf\", \"color\": \"#6d4c41\"}] } },\n  computed: {\n    p()        { return this.msg?.payload || {} },\n    sensores() { return this.p.sensores || [] },\n    rangos()   { return this.p.rangos || {} }\n  },\n  methods: {\n    formato(x) { return (typeof x === 'number') ? x.toLocaleString('es-CO', { maximumFractionDigits: 1 }) : '—' },\n    hora(t) { return new Date(t).toLocaleString('es-CO', { timeZone: 'America/Bogota',\n              day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) },\n    minutos(s) { return Math.round((this.p.ahora - s.t) / 60000) },\n    viejo(s)   { return this.p.enVivo && (this.p.ahora - s.t) > 3 * (this.p.intervaloS || 300) * 1000 },\n    alAire(s)  { return s.valores.humedad_pct === 0 && s.valores.conductividad_uScm === 0 },\n    saturado(s){ return s.valores.humedad_pct >= 99.9 },\n    estado(k, v) {\n      const r = this.rangos[k];\n      if (!r || typeof v !== 'number') return 'info';\n      if (v >= r.optimo[0] && v <= r.optimo[1]) return 'ok';\n      if (v >= r.aceptable[0] && v <= r.aceptable[1]) return 'atencion';\n      return 'critico';\n    },\n    etiqueta(e) { return { ok: 'Óptimo', atencion: 'Atención', critico: 'Fuera de rango' }[e] || '' },\n    txtRango(r) { const f = x => x.toLocaleString('es-CO');\n                  return `${f(r.optimo[0])}–${f(r.optimo[1])}${r.unidad ? ' ' + r.unidad : ''}` }\n  }\n}\n</script>\n\n<style scoped>\n.vc-vacio { width:100%; display:flex; flex-direction:column; align-items:center; gap:6px; color:#7d8b7d; padding:20px; }\n.vc-sensor { width:100%; margin-bottom:8px; }\n.vc-sensor-cab { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:10px; }\n.vc-chip { background:#1b5e20; color:#fff; font-weight:600; font-size:.85rem; padding:3px 12px; border-radius:999px; }\n.vc-hora { color:#6b7a6b; font-size:.88rem; display:inline-flex; align-items:center; gap:4px; }\n.vc-alerta { display:inline-flex; align-items:center; gap:4px; font-size:.8rem; font-weight:600;\n             padding:3px 10px; border-radius:8px; }\n.vc-alerta.rojo  { background:#ffebee; color:#c62828; }\n.vc-alerta.ambar { background:#fff8e1; color:#b26a00; }\n.vc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }\n.vc-tile { background:#f8faf8; border:1px solid #e3e9e3; border-top:4px solid; border-radius:12px; padding:10px 12px; }\n.vc-tile.ok       { background:#f1f8f1; }\n.vc-tile.atencion { background:#fffaf0; }\n.vc-tile.critico  { background:#fff4f4; }\n.vc-tile-cab { display:flex; align-items:center; gap:6px; font-size:.8rem; color:#5b6b5b; font-weight:600; }\n.vc-valor { font-size:1.6rem; font-weight:700; color:#223322; margin-top:4px; }\n.vc-unidad { font-size:.8rem; font-weight:500; color:#7d8b7d; margin-left:4px; }\n.vc-rango { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:4px; }\n.vc-badge { font-size:.7rem; font-weight:700; padding:1px 8px; border-radius:999px; }\n.ok .vc-badge       { background:#c8e6c9; color:#1b5e20; }\n.atencion .vc-badge { background:#ffe0b2; color:#a35200; }\n.critico .vc-badge  { background:#ffcdd2; color:#b71c1c; }\n.vc-ref { font-size:.72rem; color:#7d8b7d; }\n</style>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1160,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "47da66e33686a577",
+        "type": "ui-template",
+        "z": "5e75d88bef6fa344",
+        "group": "a09c5cf9e4132064",
+        "page": "",
+        "ui": "",
+        "name": "Gráficas del día",
+        "order": 1,
+        "width": "12",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"vc-cont\" ref=\"raiz\">\n  <div class=\"vc-graficas\">\n    <div v-for=\"g in graficas\" :key=\"g.id\" class=\"vc-graf\" :class=\"{ ancho: g.ancho }\">\n      <div class=\"vc-graf-cab\">\n        <div>\n          <div class=\"vc-graf-tit\">{{ g.titulo }}</div>\n          <div class=\"vc-graf-sub\">{{ g.sub }}</div>\n        </div>\n        <div class=\"vc-leyenda\">\n          <span v-for=\"s in g.series\" :key=\"'lg' + s.nombre\"><i :style=\"{ background: s.color }\"></i>{{ s.nombre }}</span>\n          <span v-if=\"g.bandas.length\"><i class=\"banda ok\"></i>Óptimo</span>\n        </div>\n      </div>\n\n      <div v-if=\"!g.hayDatos\" class=\"vc-sin\">Sin datos para este periodo</div>\n      <div v-else class=\"vc-lienzo\">\n        <svg :width=\"g.W\" :height=\"g.H\" :viewBox=\"`0 0 ${g.W} ${g.H}`\" class=\"vc-svg\" @mousemove=\"mover($event, g)\" @mouseleave=\"hover = null\">\n          <rect v-for=\"(b, i) in g.bandas\" :key=\"'b' + i\" :x=\"P.l\" :width=\"g.W - P.l - P.r\"\n                :y=\"sy(g, b.hasta)\" :height=\"Math.max(0, sy(g, b.desde) - sy(g, b.hasta))\" :fill=\"b.color\" />\n          <g v-for=\"t in g.ticksY\" :key=\"'y' + t\">\n            <line :x1=\"P.l\" :x2=\"g.W - P.r\" :y1=\"sy(g, t)\" :y2=\"sy(g, t)\" class=\"grid\" />\n            <text :x=\"P.l - 8\" :y=\"sy(g, t) + 4\" text-anchor=\"end\" class=\"eje\">{{ t.toLocaleString('es-CO', { minimumFractionDigits: g.dec, maximumFractionDigits: g.dec }) }}</text>\n          </g>\n          <g v-for=\"t in g.ticksX\" :key=\"'x' + t.v\">\n            <line :x1=\"sx(g, t.v)\" :x2=\"sx(g, t.v)\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"grid v\" />\n            <text :x=\"sx(g, t.v)\" :y=\"g.H - P.b + 20\" text-anchor=\"middle\" class=\"eje\">{{ t.txt }}</text>\n          </g>\n          <line v-if=\"g.ahora\" :x1=\"sx(g, g.ahora)\" :x2=\"sx(g, g.ahora)\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"ahora\" />\n          <path v-for=\"s in g.series\" :key=\"'l' + s.nombre\" :d=\"linea(g, s)\" fill=\"none\" :stroke=\"s.color\" :stroke-dasharray=\"s.dash || null\"\n                stroke-width=\"2.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\" />\n          <g v-for=\"s in g.series\" :key=\"'m' + s.nombre\">\n            <template v-if=\"g.marcas\">\n              <circle v-for=\"(q, i) in s.puntos\" :key=\"i\" v-show=\"q[1] !== null\" :cx=\"sx(g, q[0])\"\n                      :cy=\"q[1] !== null ? sy(g, q[1]) : 0\" r=\"3.5\" :fill=\"s.color\" />\n            </template>\n          </g>\n          <g v-if=\"hover && hover.id === g.id\">\n            <line :x1=\"hover.px\" :x2=\"hover.px\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"cursor\" />\n            <circle v-for=\"v in hover.vals\" :key=\"'h' + v.nombre\" :cx=\"sx(g, v.x)\" :cy=\"sy(g, v.y)\" r=\"5\"\n                    :fill=\"v.color\" stroke=\"#fff\" stroke-width=\"2\" />\n          </g>\n        </svg>\n        <div v-if=\"hover && hover.id === g.id\" class=\"vc-tip\" :style=\"{ left: hover.pct + '%' }\">\n          <div class=\"vc-tip-t\">{{ hover.etiqueta }}</div>\n          <div v-for=\"v in hover.vals\" :key=\"'t' + v.nombre\">\n            <i :style=\"{ background: v.color }\"></i>{{ v.nombre }}: <b>{{ fmt(v.y) }}</b> {{ g.unidad }}\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() { return { P: { l: 56, r: 18, t: 14, b: 34 }, hover: null, anchoPx: 1000, ro: null,\n                    colores: ['#1565c0', '#e65100', '#6a1b9a', '#00838f', '#c62828', '#558b2f'] } },\n  computed: {\n    p() { return this.msg?.payload || {} },\n    graficas() {\n      if (!this.p.inicio) return [];\n      return [\n        this.graficaDia('hum', 'Humedad del sustrato (%)', 'humedad_pct', '%', 0, 100, true),\n        this.graficaDia('tem', 'Temperatura del sustrato (°C)', 'temperatura_C', '°C', 5, 40, true)\n      ];\n    }\n  },\n  mounted() {\n    const medir = () => { const w = this.$refs.raiz ? this.$refs.raiz.clientWidth : 0; if (w > 0) this.anchoPx = w };\n    medir();\n    if (window.ResizeObserver) { this.ro = new ResizeObserver(medir); this.ro.observe(this.$refs.raiz) }\n  },\n  beforeUnmount() { if (this.ro) this.ro.disconnect() },\n  methods: {\n    sx(g, x) { return this.P.l + (x - g.xmin) / (g.xmax - g.xmin) * (g.W - this.P.l - this.P.r) },\n    sy(g, y) { const c = Math.min(Math.max(y, g.ymin), g.ymax);\n               return g.H - this.P.b - (c - g.ymin) / (g.ymax - g.ymin) * (g.H - this.P.t - this.P.b) },\n    fmt(x) { return (typeof x === 'number') ? x.toLocaleString('es-CO', { maximumFractionDigits: 1 }) : '—' },\n    paso(rango) { const b = Math.pow(10, Math.floor(Math.log10(rango / 5)));\n                  const r = rango / 5 / b; return (r > 5 ? 10 : r > 2 ? 5 : r > 1 ? 2 : 1) * b },\n    escala(valores) {\n      const v = valores.filter(x => typeof x === 'number');\n      let lo = Math.min(...v), hi = Math.max(...v);\n      if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1 }\n      if (hi - lo < 1e-9) { const d = Math.max(1, Math.abs(lo) * 0.1); lo -= d; hi += d }   // linea plana (p. ej. todo en 0)\n      else { const pad = (hi - lo) * 0.08; lo = (lo >= 0) ? Math.max(0, lo - pad) : lo - pad; hi += pad }\n      const s = Math.max(0.1, this.paso(hi - lo));      // el sensor resuelve 0,1\n      lo = Math.floor(lo / s) * s; hi = Math.ceil(hi / s) * s;\n      const ticks = []; for (let t = lo; t <= hi + s / 2; t += s) ticks.push(+t.toFixed(6));\n      return { ymin: lo, ymax: hi, ticksY: ticks, dec: Math.max(0, -Math.floor(Math.log10(s) + 1e-9)) };\n    },\n    linea(g, s) {\n      let d = '', abierto = false, prev = null;\n      for (const q of s.puntos) {\n        if (q[1] === null) { if (!g.unir) abierto = false; continue }\n        if (prev !== null && g.hueco && q[0] - prev > g.hueco) abierto = false;\n        d += (abierto ? 'L' : 'M') + this.sx(g, q[0]).toFixed(1) + ',' + this.sy(g, q[1]).toFixed(1); abierto = true; prev = q[0];\n      }\n      return d;\n    },\n    mover(e, g) {\n      const r = e.currentTarget.getBoundingClientRect();\n      const fx = (e.clientX - r.left) / r.width * g.W;\n      if (fx < this.P.l || fx > g.W - this.P.r) { this.hover = null; return }\n      const xv = g.xmin + (fx - this.P.l) / (g.W - this.P.l - this.P.r) * (g.xmax - g.xmin);\n      const vals = [];\n      for (const s of g.series) {\n        let mejor = null;\n        for (const q of s.puntos) if (q[1] !== null && (!mejor || Math.abs(q[0] - xv) < Math.abs(mejor[0] - xv))) mejor = q;\n        if (mejor && Math.abs(mejor[0] - xv) <= g.tol) vals.push({ nombre: s.nombre, color: s.color, x: mejor[0], y: mejor[1] });\n      }\n      if (!vals.length) { this.hover = null; return }\n      this.hover = { id: g.id, vals, px: this.sx(g, vals[0].x), pct: Math.min(85, Math.max(15, this.sx(g, vals[0].x) / g.W * 100)),\n                     etiqueta: g.etiquetaX(vals[0].x) };\n    },\n    anchoGraf(ancho) {\n      const total = Math.max(280, this.anchoPx);\n      const dos = total >= 1000 && !ancho;\n      return Math.floor((dos ? (total - 18) / 2 : total) - 30);\n    },\n    graficaDia(id, titulo, k, unidad, minFijo, maxFijo, ancho, sub) {\n      const p = this.p, r = (p.rangos || {})[k];\n      let series;\n      if (Array.isArray(k)) {\n        // Varias variables en una grafica (p. ej. N, P y K): color por variable, trazo por sensor\n        series = k.flatMap(v => ((p.series || {})[v.k] || []).map((s, i, arr) => ({\n          nombre: arr.length > 1 ? `${v.nombre} · S${s.sensor}` : v.nombre,\n          color: v.color, dash: i ? '6 4' : null, puntos: s.puntos })));\n      } else {\n        series = ((p.series || {})[k] || []).map((s, i) => ({ nombre: 'Sensor ' + s.sensor, color: this.colores[i % this.colores.length], puntos: s.puntos }));\n      }\n      const todos = series.flatMap(s => s.puntos.map(q => q[1]));\n      const esc = this.escala(todos);\n      const bandas = r ? [ { desde: r.optimo[0], hasta: r.optimo[1], color: 'rgba(76,175,80,.18)' } ] : [];\n      // Eje X ajustado a los datos: de la primera a la ultima lectura (como la v2)\n      const ts = series.flatMap(s => s.puntos.map(q => q[0]));\n      let x0 = ts.length ? Math.min(...ts) : p.inicio, x1 = ts.length ? Math.max(...ts) : p.fin;\n      if (x1 - x0 < 60000) { x0 -= 15 * 60000; x1 += 15 * 60000 }\n      const pasos = [5, 10, 15, 30, 60, 120, 180, 360].map(m => m * 60000);\n      const paso = pasos.find(st => (x1 - x0) / st <= 8) || 36e5 * 6;\n      const OFF = -5 * 36e5;                               // Colombia: UTC-5, sin horario de verano\n      const ticksX = [];\n      for (let tk = Math.ceil((x0 + OFF) / paso) * paso - OFF; tk <= x1; tk += paso)\n        ticksX.push({ v: tk, txt: new Date(tk).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }) });\n      const nPuntos = todos.length;\n      return { id, titulo, unidad, ancho, W: this.anchoGraf(ancho), H: 260, sub: sub !== undefined ? sub : (r ? r.nota : ''), series, bandas, ...esc,\n               xmin: x0, xmax: x1, ticksX, tol: 20 * 60000, hueco: 3 * (p.intervaloS || 300) * 1000,\n               marcas: nPuntos <= 40, hayDatos: nPuntos > 0,\n               ahora: null,\n               etiquetaX: x => new Date(x).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }) };\n    },\n  }\n}\n</script>\n\n<style scoped>\n.vc-cont { width:100%; }\n\n.vc-graficas { width:100%; display:grid; grid-template-columns:1fr; gap:18px; }\n@media (min-width: 1000px) { .vc-graficas { grid-template-columns:1fr 1fr; } .vc-graf.ancho { grid-column:1 / -1; } }\n.vc-graf { background:#fbfcfb; border:1px solid #e3e9e3; border-radius:12px; padding:12px 14px 6px; position:relative; }\n.vc-graf-cab { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:4px; }\n.vc-graf-tit { font-weight:700; color:#1b5e20; font-size:1rem; }\n.vc-graf-sub { font-size:.76rem; color:#7d8b7d; max-width:620px; }\n.vc-leyenda { display:flex; flex-wrap:wrap; gap:12px; font-size:.78rem; color:#5b6b5b; }\n.vc-leyenda i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }\n.vc-leyenda i.banda.ok { background:rgba(76,175,80,.35); }\n.vc-sin { color:#9aa89a; text-align:center; padding:40px 0; font-size:.9rem; }\n.vc-lienzo { position:relative; overflow:visible; }\n.vc-svg { display:block; cursor:crosshair; max-width:none; }\n.vc-svg .grid { stroke:#e9eee9; stroke-width:1; }\n.vc-svg .grid.v { stroke-dasharray:3 4; }\n.vc-svg .eje { fill:#7d8b7d; font-size:12px; }\n.vc-svg .cursor { stroke:#90a490; stroke-width:1; stroke-dasharray:4 3; }\n.vc-svg .ahora { stroke:#2e7d32; stroke-width:1.5; stroke-dasharray:2 3; opacity:.7; }\n.vc-tip { position:absolute; top:8px; transform:translateX(-50%); background:#fff; border:1px solid #dfe6df;\n          box-shadow:0 4px 14px rgba(0,0,0,.08); border-radius:8px; padding:6px 10px; font-size:.8rem;\n          pointer-events:none; white-space:nowrap; color:#334433; }\n.vc-tip-t { font-weight:700; color:#1b5e20; margin-bottom:2px; text-transform:capitalize; }\n.vc-tip i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }\n</style>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1150,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a4f5aec6680e10cb",
+        "type": "ui-template",
+        "z": "5e75d88bef6fa344",
+        "group": "6579cea4e77173b2",
+        "page": "",
+        "ui": "",
+        "name": "pH, conductividad y NPK",
+        "order": 1,
+        "width": "12",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"vc-cont\" ref=\"raiz\">\n    <div class=\"vc-ph\">\n      <div class=\"vc-graf-cab\">\n        <div>\n          <div class=\"vc-graf-tit\">pH del sustrato</div>\n          <div class=\"vc-graf-sub\">{{ rph.nota }}</div>\n        </div>\n        <div v-if=\"phDia !== null\" class=\"vc-ph-prom\">Promedio del día: <b>{{ fmt(phDia) }}</b></div>\n      </div>\n      <div v-if=\"!phSensores.length\" class=\"vc-sin\">Sin lecturas de pH para este día</div>\n      <svg v-else :width=\"gW\" height=\"78\" :viewBox=\"`0 0 ${gW} 78`\" class=\"vc-svg gauge\">\n        <rect v-for=\"(z, i) in zonasPh\" :key=\"'z' + i\" :x=\"gx(z.desde)\" y=\"30\" :width=\"gx(z.hasta) - gx(z.desde)\" height=\"12\" :fill=\"z.color\"\n              :rx=\"0\" />\n        <text v-for=\"t in [4, 5, 6, 7, 8, 9, 10]\" :key=\"'t' + t\" :x=\"gx(t)\" y=\"60\" text-anchor=\"middle\" class=\"eje\">{{ t }}</text>\n        <g v-for=\"(s, i) in phSensores\" :key=\"'s' + s.sensor\">\n          <polygon :points=\"`${gx(s.v) - 6},12 ${gx(s.v) + 6},12 ${gx(s.v)},24`\" :fill=\"colores[i % colores.length]\" />\n          <line :x1=\"gx(s.v)\" :x2=\"gx(s.v)\" y1=\"24\" y2=\"46\" :stroke=\"colores[i % colores.length]\" stroke-width=\"2.5\" />\n          <text :x=\"gx(s.v) + 10\" y=\"21\" class=\"vc-ph-txt\" :fill=\"colores[i % colores.length]\">S{{ s.sensor }}: {{ fmt(s.v) }}</text>\n        </g>\n        <text :x=\"gW - 4\" y=\"76\" text-anchor=\"end\" class=\"eje\">ácido ← 7 neutro → alcalino</text>\n      </svg>\n    </div>\n    <div class=\"vc-nota-sust\">\n      <v-icon size=\"16\" color=\"#7d8b7d\">mdi-information-outline</v-icon>\n      En este tipo de sensor, el NPK se estima a partir de la conductividad.\n    </div>\n\n  <div class=\"vc-graficas\">\n    <div v-for=\"g in graficas\" :key=\"g.id\" class=\"vc-graf\" :class=\"{ ancho: g.ancho }\">\n      <div class=\"vc-graf-cab\">\n        <div>\n          <div class=\"vc-graf-tit\">{{ g.titulo }}</div>\n          <div class=\"vc-graf-sub\">{{ g.sub }}</div>\n        </div>\n        <div class=\"vc-leyenda\">\n          <span v-for=\"s in g.series\" :key=\"'lg' + s.nombre\"><i :style=\"{ background: s.color }\"></i>{{ s.nombre }}</span>\n          <span v-if=\"g.bandas.length\"><i class=\"banda ok\"></i>Óptimo</span>\n        </div>\n      </div>\n\n      <div v-if=\"!g.hayDatos\" class=\"vc-sin\">Sin datos para este periodo</div>\n      <div v-else class=\"vc-lienzo\">\n        <svg :width=\"g.W\" :height=\"g.H\" :viewBox=\"`0 0 ${g.W} ${g.H}`\" class=\"vc-svg\" @mousemove=\"mover($event, g)\" @mouseleave=\"hover = null\">\n          <rect v-for=\"(b, i) in g.bandas\" :key=\"'b' + i\" :x=\"P.l\" :width=\"g.W - P.l - P.r\"\n                :y=\"sy(g, b.hasta)\" :height=\"Math.max(0, sy(g, b.desde) - sy(g, b.hasta))\" :fill=\"b.color\" />\n          <g v-for=\"t in g.ticksY\" :key=\"'y' + t\">\n            <line :x1=\"P.l\" :x2=\"g.W - P.r\" :y1=\"sy(g, t)\" :y2=\"sy(g, t)\" class=\"grid\" />\n            <text :x=\"P.l - 8\" :y=\"sy(g, t) + 4\" text-anchor=\"end\" class=\"eje\">{{ t.toLocaleString('es-CO', { minimumFractionDigits: g.dec, maximumFractionDigits: g.dec }) }}</text>\n          </g>\n          <g v-for=\"t in g.ticksX\" :key=\"'x' + t.v\">\n            <line :x1=\"sx(g, t.v)\" :x2=\"sx(g, t.v)\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"grid v\" />\n            <text :x=\"sx(g, t.v)\" :y=\"g.H - P.b + 20\" text-anchor=\"middle\" class=\"eje\">{{ t.txt }}</text>\n          </g>\n          <line v-if=\"g.ahora\" :x1=\"sx(g, g.ahora)\" :x2=\"sx(g, g.ahora)\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"ahora\" />\n          <path v-for=\"s in g.series\" :key=\"'l' + s.nombre\" :d=\"linea(g, s)\" fill=\"none\" :stroke=\"s.color\" :stroke-dasharray=\"s.dash || null\"\n                stroke-width=\"2.4\" stroke-linejoin=\"round\" stroke-linecap=\"round\" />\n          <g v-for=\"s in g.series\" :key=\"'m' + s.nombre\">\n            <template v-if=\"g.marcas\">\n              <circle v-for=\"(q, i) in s.puntos\" :key=\"i\" v-show=\"q[1] !== null\" :cx=\"sx(g, q[0])\"\n                      :cy=\"q[1] !== null ? sy(g, q[1]) : 0\" r=\"3.5\" :fill=\"s.color\" />\n            </template>\n          </g>\n          <g v-if=\"hover && hover.id === g.id\">\n            <line :x1=\"hover.px\" :x2=\"hover.px\" :y1=\"P.t\" :y2=\"g.H - P.b\" class=\"cursor\" />\n            <circle v-for=\"v in hover.vals\" :key=\"'h' + v.nombre\" :cx=\"sx(g, v.x)\" :cy=\"sy(g, v.y)\" r=\"5\"\n                    :fill=\"v.color\" stroke=\"#fff\" stroke-width=\"2\" />\n          </g>\n        </svg>\n        <div v-if=\"hover && hover.id === g.id\" class=\"vc-tip\" :style=\"{ left: hover.pct + '%' }\">\n          <div class=\"vc-tip-t\">{{ hover.etiqueta }}</div>\n          <div v-for=\"v in hover.vals\" :key=\"'t' + v.nombre\">\n            <i :style=\"{ background: v.color }\"></i>{{ v.nombre }}: <b>{{ fmt(v.y) }}</b> {{ g.unidad }}\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() { return { P: { l: 56, r: 18, t: 14, b: 34 }, hover: null, anchoPx: 1000, ro: null,\n                    colores: ['#1565c0', '#e65100', '#6a1b9a', '#00838f', '#c62828', '#558b2f'] } },\n  computed: {\n    p() { return this.msg?.payload || {} },\n    gW() { return Math.floor(Math.max(280, this.anchoPx) - 30) },\n    rph() { return (this.p.rangos || {}).ph || { optimo: [6.5, 7.5], aceptable: [6, 8.5], nota: '' } },\n    phSensores() { return (this.p.sensores || []).filter(s => typeof s.valores.ph === 'number')\n                     .map(s => ({ sensor: s.sensor, v: Math.min(10, Math.max(4, s.valores.ph)) })) },\n    phDia() { const v = ((this.p.series || {}).ph || []).flatMap(s => s.puntos.map(q => q[1]));\n              return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null },\n    zonasPh() { const r = this.rph, rojo = '#ef9a9a', amb = '#ffcc80', verde = '#81c784';\n                return [ { desde: 4, hasta: r.aceptable[0], color: rojo }, { desde: r.aceptable[0], hasta: r.optimo[0], color: amb },\n                         { desde: r.optimo[0], hasta: r.optimo[1], color: verde }, { desde: r.optimo[1], hasta: r.aceptable[1], color: amb },\n                         { desde: r.aceptable[1], hasta: 10, color: rojo } ] },\n    graficas() {\n      if (!this.p.inicio) return [];\n      return [\n        this.graficaDia('ce', 'Conductividad eléctrica (µS/cm)', 'conductividad_uScm', 'µS/cm', 0, undefined, false, ''),\n        this.graficaDia('npk', 'Nitrógeno, fósforo y potasio (mg/kg)',\n                        [{ k: 'nitrogeno_mgkg', nombre: 'N', color: '#43a047' },\n                         { k: 'fosforo_mgkg',   nombre: 'P', color: '#00897b' },\n                         { k: 'potasio_mgkg',   nombre: 'K', color: '#6d4c41' }], 'mg/kg', 0, undefined, false, '')\n      ];\n    }\n  },\n  mounted() {\n    const medir = () => { const w = this.$refs.raiz ? this.$refs.raiz.clientWidth : 0; if (w > 0) this.anchoPx = w };\n    medir();\n    if (window.ResizeObserver) { this.ro = new ResizeObserver(medir); this.ro.observe(this.$refs.raiz) }\n  },\n  beforeUnmount() { if (this.ro) this.ro.disconnect() },\n  methods: {\n    sx(g, x) { return this.P.l + (x - g.xmin) / (g.xmax - g.xmin) * (g.W - this.P.l - this.P.r) },\n    sy(g, y) { const c = Math.min(Math.max(y, g.ymin), g.ymax);\n               return g.H - this.P.b - (c - g.ymin) / (g.ymax - g.ymin) * (g.H - this.P.t - this.P.b) },\n    fmt(x) { return (typeof x === 'number') ? x.toLocaleString('es-CO', { maximumFractionDigits: 1 }) : '—' },\n    paso(rango) { const b = Math.pow(10, Math.floor(Math.log10(rango / 5)));\n                  const r = rango / 5 / b; return (r > 5 ? 10 : r > 2 ? 5 : r > 1 ? 2 : 1) * b },\n    escala(valores) {\n      const v = valores.filter(x => typeof x === 'number');\n      let lo = Math.min(...v), hi = Math.max(...v);\n      if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1 }\n      if (hi - lo < 1e-9) { const d = Math.max(1, Math.abs(lo) * 0.1); lo -= d; hi += d }   // linea plana (p. ej. todo en 0)\n      else { const pad = (hi - lo) * 0.08; lo = (lo >= 0) ? Math.max(0, lo - pad) : lo - pad; hi += pad }\n      const s = Math.max(0.1, this.paso(hi - lo));      // el sensor resuelve 0,1\n      lo = Math.floor(lo / s) * s; hi = Math.ceil(hi / s) * s;\n      const ticks = []; for (let t = lo; t <= hi + s / 2; t += s) ticks.push(+t.toFixed(6));\n      return { ymin: lo, ymax: hi, ticksY: ticks, dec: Math.max(0, -Math.floor(Math.log10(s) + 1e-9)) };\n    },\n    linea(g, s) {\n      let d = '', abierto = false, prev = null;\n      for (const q of s.puntos) {\n        if (q[1] === null) { if (!g.unir) abierto = false; continue }\n        if (prev !== null && g.hueco && q[0] - prev > g.hueco) abierto = false;\n        d += (abierto ? 'L' : 'M') + this.sx(g, q[0]).toFixed(1) + ',' + this.sy(g, q[1]).toFixed(1); abierto = true; prev = q[0];\n      }\n      return d;\n    },\n    mover(e, g) {\n      const r = e.currentTarget.getBoundingClientRect();\n      const fx = (e.clientX - r.left) / r.width * g.W;\n      if (fx < this.P.l || fx > g.W - this.P.r) { this.hover = null; return }\n      const xv = g.xmin + (fx - this.P.l) / (g.W - this.P.l - this.P.r) * (g.xmax - g.xmin);\n      const vals = [];\n      for (const s of g.series) {\n        let mejor = null;\n        for (const q of s.puntos) if (q[1] !== null && (!mejor || Math.abs(q[0] - xv) < Math.abs(mejor[0] - xv))) mejor = q;\n        if (mejor && Math.abs(mejor[0] - xv) <= g.tol) vals.push({ nombre: s.nombre, color: s.color, x: mejor[0], y: mejor[1] });\n      }\n      if (!vals.length) { this.hover = null; return }\n      this.hover = { id: g.id, vals, px: this.sx(g, vals[0].x), pct: Math.min(85, Math.max(15, this.sx(g, vals[0].x) / g.W * 100)),\n                     etiqueta: g.etiquetaX(vals[0].x) };\n    },\n    anchoGraf(ancho) {\n      const total = Math.max(280, this.anchoPx);\n      const dos = total >= 1000 && !ancho;\n      return Math.floor((dos ? (total - 18) / 2 : total) - 30);\n    },\n    graficaDia(id, titulo, k, unidad, minFijo, maxFijo, ancho, sub) {\n      const p = this.p, r = (p.rangos || {})[k];\n      let series;\n      if (Array.isArray(k)) {\n        // Varias variables en una grafica (p. ej. N, P y K): color por variable, trazo por sensor\n        series = k.flatMap(v => ((p.series || {})[v.k] || []).map((s, i, arr) => ({\n          nombre: arr.length > 1 ? `${v.nombre} · S${s.sensor}` : v.nombre,\n          color: v.color, dash: i ? '6 4' : null, puntos: s.puntos })));\n      } else {\n        series = ((p.series || {})[k] || []).map((s, i) => ({ nombre: 'Sensor ' + s.sensor, color: this.colores[i % this.colores.length], puntos: s.puntos }));\n      }\n      const todos = series.flatMap(s => s.puntos.map(q => q[1]));\n      const esc = this.escala(todos);\n      const bandas = r ? [ { desde: r.optimo[0], hasta: r.optimo[1], color: 'rgba(76,175,80,.18)' } ] : [];\n      // Eje X ajustado a los datos: de la primera a la ultima lectura (como la v2)\n      const ts = series.flatMap(s => s.puntos.map(q => q[0]));\n      let x0 = ts.length ? Math.min(...ts) : p.inicio, x1 = ts.length ? Math.max(...ts) : p.fin;\n      if (x1 - x0 < 60000) { x0 -= 15 * 60000; x1 += 15 * 60000 }\n      const pasos = [5, 10, 15, 30, 60, 120, 180, 360].map(m => m * 60000);\n      const paso = pasos.find(st => (x1 - x0) / st <= 8) || 36e5 * 6;\n      const OFF = -5 * 36e5;                               // Colombia: UTC-5, sin horario de verano\n      const ticksX = [];\n      for (let tk = Math.ceil((x0 + OFF) / paso) * paso - OFF; tk <= x1; tk += paso)\n        ticksX.push({ v: tk, txt: new Date(tk).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }) });\n      const nPuntos = todos.length;\n      return { id, titulo, unidad, ancho, W: this.anchoGraf(ancho), H: 260, sub: sub !== undefined ? sub : (r ? r.nota : ''), series, bandas, ...esc,\n               xmin: x0, xmax: x1, ticksX, tol: 20 * 60000, hueco: 3 * (p.intervaloS || 300) * 1000,\n               marcas: nPuntos <= 40, hayDatos: nPuntos > 0,\n               ahora: null,\n               etiquetaX: x => new Date(x).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' }) };\n    },\n\n    gx(v) { return 20 + (v - 4) / 6 * (this.gW - 40) },\n  }\n}\n</script>\n\n<style scoped>\n.vc-cont { width:100%; }\n\n.vc-graficas { width:100%; display:grid; grid-template-columns:1fr; gap:18px; }\n@media (min-width: 1000px) { .vc-graficas { grid-template-columns:1fr 1fr; } .vc-graf.ancho { grid-column:1 / -1; } }\n.vc-graf { background:#fbfcfb; border:1px solid #e3e9e3; border-radius:12px; padding:12px 14px 6px; position:relative; }\n.vc-graf-cab { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:4px; }\n.vc-graf-tit { font-weight:700; color:#1b5e20; font-size:1rem; }\n.vc-graf-sub { font-size:.76rem; color:#7d8b7d; max-width:620px; }\n.vc-leyenda { display:flex; flex-wrap:wrap; gap:12px; font-size:.78rem; color:#5b6b5b; }\n.vc-leyenda i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }\n.vc-leyenda i.banda.ok { background:rgba(76,175,80,.35); }\n.vc-sin { color:#9aa89a; text-align:center; padding:40px 0; font-size:.9rem; }\n.vc-lienzo { position:relative; overflow:visible; }\n.vc-svg { display:block; cursor:crosshair; max-width:none; }\n.vc-svg .grid { stroke:#e9eee9; stroke-width:1; }\n.vc-svg .grid.v { stroke-dasharray:3 4; }\n.vc-svg .eje { fill:#7d8b7d; font-size:12px; }\n.vc-svg .cursor { stroke:#90a490; stroke-width:1; stroke-dasharray:4 3; }\n.vc-svg .ahora { stroke:#2e7d32; stroke-width:1.5; stroke-dasharray:2 3; opacity:.7; }\n.vc-tip { position:absolute; top:8px; transform:translateX(-50%); background:#fff; border:1px solid #dfe6df;\n          box-shadow:0 4px 14px rgba(0,0,0,.08); border-radius:8px; padding:6px 10px; font-size:.8rem;\n          pointer-events:none; white-space:nowrap; color:#334433; }\n.vc-tip-t { font-weight:700; color:#1b5e20; margin-bottom:2px; text-transform:capitalize; }\n.vc-tip i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }\n\n.vc-ph { background:#fbfcfb; border:1px solid #e3e9e3; border-radius:12px; padding:12px 14px; margin-bottom:18px; }\n.vc-ph-prom { font-size:.85rem; color:#5b6b5b; }\n.vc-svg.gauge { cursor:default; margin-top:6px; }\n.vc-ph-txt { font-size:13px; font-weight:700; }\n.vc-nota-sust { display:flex; gap:6px; align-items:flex-start; font-size:.78rem; color:#7d8b7d; margin:-6px 2px 14px; }\n</style>",
+        "storeOutMessages": true,
+        "passthru": false,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1180,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fbac8b65e958135f",
+        "type": "comment",
+        "z": "5e75d88bef6fa344",
+        "name": "2) Lote por MQTT: 06:00 y 18:00 (hoy) o desde el botón del dashboard (día mostrado)",
+        "info": "Cuando confirmes que este lote llega al receptor, pon LOTE_DESDE_SCRIPT=0 en docker-compose.yml para no enviarlo dos veces.",
+        "x": 360,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "f64e8e77cf13bff1",
+        "type": "inject",
+        "z": "5e75d88bef6fa344",
+        "name": "06:00",
+        "props": [],
+        "repeat": "",
+        "crontab": "00 06 * * *",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 110,
+        "y": 440,
+        "wires": [
+            [
+                "85364fb6ef87e82e"
+            ]
+        ]
+    },
+    {
+        "id": "459c909824524a9f",
+        "type": "inject",
+        "z": "5e75d88bef6fa344",
+        "name": "18:00",
+        "props": [],
+        "repeat": "",
+        "crontab": "00 18 * * *",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 110,
+        "y": 480,
+        "wires": [
+            [
+                "85364fb6ef87e82e"
+            ]
+        ]
+    },
+    {
+        "id": "85364fb6ef87e82e",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Consulta lecturas del lote",
+        "func": "// Sin msg.fecha (inyeccion programada) = hoy en hora de Colombia (TZ del contenedor)\nif (!msg.fecha) {\n    const h = new Date(), p = n => String(n).padStart(2, '0');\n    msg.fecha = `${h.getFullYear()}-${p(h.getMonth() + 1)}-${p(h.getDate())}`;\n    msg.origen = 'programado';\n}\nmsg.payload = [\n    { fecha: msg.fecha, sitio: 'huertolab' },\n    { sort: { timestamp: 1 }, projection: { _id: 0 } }\n];\nreturn msg;",
+        "outputs": 1,
+        "x": 580,
+        "y": 480,
+        "wires": [
+            [
+                "cbf32651e6b8070c"
+            ]
+        ]
+    },
+    {
+        "id": "cbf32651e6b8070c",
+        "type": "mongodb4",
+        "z": "5e75d88bef6fa344",
+        "clientNode": "mongo_cfg",
+        "mode": "collection",
+        "collection": "lecturas",
+        "operation": "find",
+        "output": "toArray",
+        "maxTimeMS": "0",
+        "handleDocId": false,
+        "name": "lecturas del lote",
+        "x": 800,
+        "y": 480,
+        "wires": [
+            [
+                "32692e330b87bbc6"
+            ]
+        ]
+    },
+    {
+        "id": "32692e330b87bbc6",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Armar CSV (formato Pi3)",
+        "func": "// Prefijo MQTT por entorno: el simulador publica en otro prefijo y nunca\n// contamina los lotes reales del laboratorio (docker-compose.sim.yml).\nconst PREFIJO = env.get('MQTT_PREFIJO') || 'uao/vermicompost/huertolab';\n// Mismo formato que el emisor: timestamp,sensor_id,7 variables; hora local sin zona\nconst vars = [\"humedad_pct\", \"temperatura_C\", \"conductividad_uScm\", \"ph\", \"nitrogeno_mgkg\", \"fosforo_mgkg\", \"potasio_mgkg\"];\nconst p = n => String(n).padStart(2, '0');\nconst hora = t => { const d = new Date(t);\n    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };\nconst num = v => (typeof v === 'number' && Number.isInteger(v)) ? v.toFixed(1) : String(v);\nconst docs = Array.isArray(msg.payload) ? msg.payload : [];\n\nconst lineas = ['timestamp,sensor_id,' + vars.join(',')];\nfor (const d of docs) lineas.push([hora(d.timestamp), d.sensor_id, ...vars.map(v => num(d[v]))].join(','));\nnode.status({ fill: 'green', shape: 'dot', text: `${msg.fecha}: ${docs.length} lecturas (${msg.origen})` });\nconst csv = lineas.join('\\n') + '\\n';\n\n// Solicitud del laboratorio: responde siempre por el topico aparte y sin retain\nif (msg.origen === 'solicitud') {\n    return [{ topic: PREFIJO + '/lote/solicitado', qos: 1, retain: false,\n              payload: docs.length ? csv : `SIN_DATOS,${msg.fecha}` }, null];\n}\n// Programado (06:00 / 18:00) o boton del dashboard: topico de lote, con retain\nconst lote = { payload: csv, topic: PREFIJO + '/lote', qos: 1, retain: true };\nconst aviso = (msg.origen === 'dashboard')\n    ? { payload: docs.length\n          ? `Lote del ${msg.fecha} publicado (${docs.length} lecturas).`\n          : `No hay lecturas el ${msg.fecha}; no se envió lote.` }\n    : null;\nreturn [docs.length ? lote : null, aviso];",
+        "outputs": 2,
+        "x": 1030,
+        "y": 480,
+        "wires": [
+            [
+                "a8460fe2c50796f7",
+                "9a2d442cdbc21cbb"
+            ],
+            [
+                "88c87dd20d945ad2"
+            ]
+        ]
+    },
+    {
+        "id": "a8460fe2c50796f7",
+        "type": "mqtt out",
+        "z": "5e75d88bef6fa344",
+        "name": "Publicar lote",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_cfg",
+        "x": 1250,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "9a2d442cdbc21cbb",
+        "type": "debug",
+        "z": "5e75d88bef6fa344",
+        "name": "Ver lote",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1240,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "88c87dd20d945ad2",
+        "type": "ui-notification",
+        "z": "5e75d88bef6fa344",
+        "ui": "ui_base",
+        "position": "top right",
+        "colorDefault": false,
+        "color": "#2e7d32",
+        "displayTime": "4",
+        "showCountdown": true,
+        "outputs": 0,
+        "allowDismiss": true,
+        "dismissText": "Cerrar",
+        "allowConfirm": false,
+        "confirmText": "",
+        "raw": false,
+        "className": "",
+        "name": "Aviso",
+        "x": 1260,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "6784328aa4bb3435",
+        "type": "comment",
+        "z": "5e75d88bef6fa344",
+        "name": "3) Solicitudes de lote desde el laboratorio (receptor del PC)",
+        "info": "El receptor publica la fecha en uao/vermicompost/huertolab/solicitud. La respuesta va por .../lote/solicitado, SIN retain, para no reemplazar el lote del dia que guarda el broker.",
+        "x": 290,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "1bcb20ab038d748b",
+        "type": "mqtt in",
+        "z": "5e75d88bef6fa344",
+        "name": "Solicitud de lote",
+        "topic": "uao/vermicompost/+/solicitud",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "mqtt_cfg",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 640,
+        "wires": [
+            [
+                "2ba42762de6021e1"
+            ]
+        ]
+    },
+    {
+        "id": "2ba42762de6021e1",
+        "type": "function",
+        "z": "5e75d88bef6fa344",
+        "name": "Validar solicitud",
+        "func": "// Node-RED NO sustituye ${VAR} dentro de un topico (se suscribe al texto literal),\n// asi que el nodo escucha uao/vermicompost/+/solicitud y aqui se descarta lo que no sea de este entorno.\nconst PREFIJO = env.get('MQTT_PREFIJO') || 'uao/vermicompost/huertolab';\nif (msg.topic !== PREFIJO + '/solicitud') return null;\n// Acepta \"2026-10-22\" o {\"fecha\": \"2026-10-22\", \"id\": \"...\"}\nlet f = msg.payload, id = null;\nif (typeof f === 'object' && f !== null) { id = f.id || null; f = f.fecha; }\nf = String(f || '').trim().slice(0, 10);\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(f)) {\n    node.warn('Solicitud con fecha invalida: ' + JSON.stringify(msg.payload));\n    return null;\n}\nnode.status({ fill: 'blue', shape: 'dot', text: 'solicitud ' + f });\nreturn { fecha: f, origen: 'solicitud', solicitudId: id };",
+        "outputs": 1,
+        "x": 360,
+        "y": 640,
+        "wires": [
+            [
+                "85364fb6ef87e82e"
+            ]
+        ]
+    }
+]

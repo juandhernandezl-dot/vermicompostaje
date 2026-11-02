@@ -1,0 +1,17 @@
+{
+  "_nota": "Una entrada por zona: sensor = direccion Modbus, valvula = numero en el ESP32 (1..3). banda en % VWC. vwc_cc = % VWC que equivale a capacidad de campo (W/W_fc = 1); es la conversion que usa RL y la que hay que calibrar en campo. modo inicial: manual | pi | rl (luego se cambia por la API y queda guardado en MongoDB).",
+  "zonas": [
+    {"zona": 1, "nombre": "Zona 1 (cabecera)", "sensor": 3, "valvula": 1, "modo": "manual",
+     "banda": [25.0, 32.0], "vwc_cc": 35.0,
+     "pi": {"kc": 0.08, "ti_s": 1800, "zona_muerta": 1.0},
+     "rl": {"algoritmo": "qlearning", "tabla": "z0_q-learning.json"}},
+    {"zona": 2, "nombre": "Zona 2", "sensor": 4, "valvula": 2, "modo": "manual",
+     "banda": [25.0, 32.0], "vwc_cc": 35.0,
+     "pi": {"kc": 0.08, "ti_s": 1800, "zona_muerta": 1.0},
+     "rl": {"algoritmo": "qlearning", "tabla": "z1_q-learning.json"}},
+    {"zona": 3, "nombre": "Zona 3 (pie)", "sensor": 6, "valvula": 3, "modo": "manual",
+     "banda": [25.0, 32.0], "vwc_cc": 35.0,
+     "pi": {"kc": 0.08, "ti_s": 1800, "zona_muerta": 1.0},
+     "rl": {"algoritmo": "qlearning", "tabla": "z2_q-learning.json"}}
+  ]
+}

@@ -1,0 +1,2 @@
+pyserial==3.5
+pymongo>=4.6,<5

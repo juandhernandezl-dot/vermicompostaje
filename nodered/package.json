@@ -1,0 +1,10 @@
+{
+    "name": "node-red-project",
+    "description": "A Node-RED Project",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "@flowfuse/node-red-dashboard": "~1.33.0",
+        "node-red-contrib-mongodb4": "~3.4.0"
+    }
+}

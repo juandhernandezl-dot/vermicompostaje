@@ -1,0 +1,29 @@
+# --- estado, no codigo (vive fuera del repo o se regenera) ---
+.env
+datos/
+mongo-data/
+node_modules/
+.npm/
+nodered/.config.*
+nodered/.sessions.json
+nodered/.flows.json.backup
+nodered/.flows_cred.json.backup
+nodered/flows_cred.json
+nodered/lib/
+nodered/node_modules/
+simulador/estado_rl/
+simulador/.build/
+simulador/campo.json
+# el agente RL del simulador v3 crea tablas_rl/ y estado_rl/ en la carpeta desde la que se
+# ejecuta; las tablas que valen son las de simulador/tablas_rl/
+/tablas_rl/
+/estado_rl/
+# --- artefactos de construccion ---
+__pycache__/
+*.pyc
+receptor_lab/build/
+receptor_lab/dist/
+.venv/
+*.exe
+organizar.sh
+firmware/pruebas/firmware_host

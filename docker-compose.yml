@@ -1,0 +1,168 @@
+# =============================================================================
+# Cama de vermicompostaje - Raspberry Pi 5 (HuertoLab UAO)
+#
+#   docker compose up -d                          # el modo lo decide .env
+#   docker compose --profile agente up -d         # + agente y Ollama
+#
+# Con COMPOSE_FILE=docker-compose.yml:docker-compose.sim.yml en .env, todo
+# corre contra la planta simulada (sin USB). Ver README.md y docs/.
+#
+# Quien manda que:
+#   sensores   -> unico dueño del adaptador USB-RS485 (lecturas a MongoDB)
+#   actuadores -> unico dueño del ESP32 de las valvulas (USB)
+#   control    -> unico dueño del MODO de cada zona y unico cliente de actuadores
+#   agente     -> conversa; para actuar le pide a control, nunca a actuadores
+# =============================================================================
+x-tz: &tz
+  TZ: America/Bogota
+
+services:
+  mongodb:
+    # 7.0 y no 8: el tcmalloc de MongoDB 8 aborta en la Pi 5 ("MmapAligned() failed", exit 133).
+    image: mongo:7.0
+    container_name: mongodb
+    restart: unless-stopped
+    # Cache pequena: los datos son diminutos y en la Pi la RAM se la lleva el LLM.
+    command: ["--wiredTigerCacheSizeGB", "0.5"]
+    environment: *tz
+    volumes:
+      # Los datos viven FUERA del repo: un git clean o un re-clonado no los toca.
+      - ${DATOS_DIR:-../vermi-datos}/mongo:/data/db
+    ports:
+      - "127.0.0.1:27017:27017"
+
+  nodered:
+    build: ./nodered
+    container_name: nodered
+    restart: unless-stopped
+    depends_on: [mongodb]
+    environment:
+      <<: *tz
+      MQTT_PREFIJO: ${MQTT_PREFIJO:-uao/vermicompost/huertolab}
+    volumes:
+      - ./nodered:/data
+    ports:
+      # Si el stack del huerto (huerto-bot, network_mode: host) corre en la
+      # misma Pi, su Node-RED ya ocupa el 1880: pon NODERED_PUERTO=1881 en .env.
+      - "${NODERED_PUERTO:-1880}:1880"
+
+  sensores:
+    build: ./servicios/sensores
+    container_name: sensores
+    restart: unless-stopped
+    depends_on: [mongodb]
+    devices:
+      - "${SENSORES_USB:-/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A5069RR4-if00-port0}:/dev/sensor7in1"
+    volumes:
+      - ${DATOS_DIR:-../vermi-datos}/respaldo_csv:/datos
+    environment:
+      <<: *tz
+      MODO: produccion
+      SITIO: huertolab
+      DIRECCIONES_SENSORES: "3,4,6"
+      MODO_LECTURA: ${MODO_LECTURA:-bloque}
+      INTERVALO_MUESTREO_S: "300"
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB: vermicompost
+      MONGO_COLECCION: lecturas
+      ENVIAR_TIEMPO_REAL: "1"
+      LOTE_DESDE_SCRIPT: "0"
+      MQTT_BROKER: broker.hivemq.com
+      MQTT_PUERTO: "1883"
+      MQTT_TOPICO_TIEMPO_REAL: ${MQTT_PREFIJO:-uao/vermicompost/huertolab}/datos
+      MQTT_TOPICO_LOTE: ${MQTT_PREFIJO:-uao/vermicompost/huertolab}/lote
+      MQTT_CLIENT_ID: rpi5-huertolab-sensores
+
+  actuadores:
+    build: ./servicios/actuadores
+    container_name: actuadores
+    restart: unless-stopped
+    depends_on: [mongodb]
+    devices:
+      - "${ESP32_USB:-/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0}:/dev/esp32"
+    ports:
+      - "127.0.0.1:8000:8000"     # solo para pruebas con curl desde la Pi
+    environment:
+      <<: *tz
+      SITIO: huertolab
+      NUM_VALVULAS: "3"
+      NOMBRES_VALVULAS: cama1-zona1,cama1-zona2,cama1-zona3
+      PERIODO_PING_S: "10"
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB: vermicompost
+      MONGO_COLECCION_RIEGOS: riegos
+    healthcheck:
+      # Vivo = el servidor HTTP responde 200 en /estado (la imagen slim no trae curl).
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/estado', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  control:
+    build:
+      context: .
+      dockerfile: servicios/control/Dockerfile
+    container_name: control
+    restart: unless-stopped
+    depends_on: [mongodb, actuadores]
+    ports:
+      - "127.0.0.1:8100:8100"
+    environment:
+      <<: *tz
+      SITIO: huertolab
+      PUENTE_URL: http://actuadores:8000
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB: vermicompost
+      TS_S: "300"                 # = INTERVALO_MUESTREO_S de sensores
+    healthcheck:
+      # Vivo = el servidor HTTP responde 200 en /estado (la imagen slim no trae curl).
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8100/estado', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  agente:
+    build: ./servicios/agente
+    container_name: agente
+    restart: unless-stopped
+    profiles: [agente]
+    depends_on: [control]
+    stdin_open: true
+    tty: true
+    environment:
+      <<: *tz
+      CONTROL_URL: http://control:8100
+      MONGO_URI: mongodb://mongodb:27017
+      MONGO_DB: vermicompost
+      SITIO: huertolab
+      LLM_BACKEND: ollama
+      LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
+      OLLAMA_BASE_URL: http://ollama:11434
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    profiles: [agente]
+    # Tope de RAM: si el modelo crece, que lo mate el kernel a el y no a
+    # Mongo ni al puente que manda el agua (Pi 5 de 8 GB).
+    mem_limit: ${OLLAMA_MEM:-5g}
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: [agente]
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["sh", "-c", "sleep 5; ollama pull ${LLM_MODEL:-qwen3.5:4b}"]
+    restart: "no"
+
+volumes:
+  ollama_data:
