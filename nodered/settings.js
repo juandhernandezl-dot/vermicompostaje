@@ -20,6 +20,54 @@
  *
  **/
 
+// ---------------------------------------------------------------------------
+// Contraseñas del editor y del dashboard (vermicompostaje).
+// Se leen del entorno (.env de la Pi, nunca del repo) como hash bcrypt:
+//   NODERED_ADMIN_USUARIO / NODERED_ADMIN_HASH  -> editor y API de admin
+//   NODERED_DASH_USUARIO  / NODERED_DASH_HASH   -> dashboard (y cualquier http-in)
+// Si falta un par, ese acceso queda BLOQUEADO con un hash aleatorio que nadie
+// conoce (falla cerrado), pero Node-RED sigue corriendo: los flujos de lotes y
+// MQTT no dependen de que alguien pueda entrar al dashboard.
+// ---------------------------------------------------------------------------
+const crypto = require("crypto");
+function credencial(prefijo) {
+    const usuario = (process.env[prefijo + "_USUARIO"] || "").trim();
+    const hash = (process.env[prefijo + "_HASH"] || "").trim();
+    if (usuario && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(hash)) {
+        return { usuario, hash };
+    }
+    console.warn(`[seguridad] ${prefijo}_USUARIO/${prefijo}_HASH ausentes o con formato invalido: ` +
+                 "ese acceso queda bloqueado. Ver docs/GUIA_PI5.md (contraseña de Node-RED).");
+    const abc = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const azar = Array.from(crypto.randomBytes(53), b => abc[b % 64]).join("");
+    return { usuario: "bloqueado-" + crypto.randomBytes(8).toString("hex"), hash: "$2b$10$" + azar };
+}
+const ADMIN = credencial("NODERED_ADMIN");
+const DASH = credencial("NODERED_DASH");
+
+// httpNodeAuth protege las paginas del dashboard pero NO su socket.io
+// (/dashboard/socket.io responde sin credenciales, verificado con Dashboard 2
+// v1.33). Por ese socket viajan los mensajes de los widgets, asi que se exige
+// la misma credencial Basic en el handshake. El navegador la reenvia sola
+// porque ya la dio para /dashboard.
+let bcrypt = null;
+try {
+    bcrypt = require(require.resolve("bcryptjs", { paths: [require.main ? require.main.path : process.cwd(), process.cwd()] }));
+} catch (e) {
+    console.warn("[seguridad] no se encontro bcryptjs: el socket del dashboard rechazara a todos.");
+}
+const _validas = new Set();
+function credencialDashValida(cabecera) {
+    if (!bcrypt || !cabecera || !cabecera.startsWith("Basic ")) return false;
+    if (_validas.has(cabecera)) return true;
+    const plano = Buffer.from(cabecera.slice(6), "base64").toString("utf8");
+    const i = plano.indexOf(":");
+    if (i < 0) return false;
+    const ok = plano.slice(0, i) === DASH.usuario && bcrypt.compareSync(plano.slice(i + 1), DASH.hash);
+    if (ok && _validas.size < 100) _validas.add(cabecera);
+    return ok;
+}
+
 module.exports = {
 
 /*******************************************************************************
@@ -75,14 +123,10 @@ module.exports = {
     /** To password protect the Node-RED editor and admin API, the following
      * property can be used. See https://nodered.org/docs/security.html for details.
      */
-    /**adminAuth: {
+    adminAuth: {
         type: "credentials",
-        users: [{
-            username: "admin",
-            password: "$2b$08$pw.ceSs1qMpTymRfbf43yuhzdHloUsfF9iTLx/aTxsxhIUHmA1om6",
-            permissions: "*"
-        }]
-    },**/
+        users: [{ username: ADMIN.usuario, password: ADMIN.hash, permissions: "*" }]
+    },
 
     /** The following property can be used to enable HTTPS
      * This property can be either an object, containing both a (private) key
@@ -124,7 +168,13 @@ module.exports = {
      * The `pass` field is a bcrypt hash of the password.
      * See https://nodered.org/docs/security.html#generating-the-password-hash
      */
-    //httpNodeAuth: {user:"user",pass:"$2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN."},
+    httpNodeAuth: { user: DASH.usuario, pass: DASH.hash },
+    dashboard: {
+        ioMiddleware: function (socket, next) {
+            if (credencialDashValida(socket.request.headers.authorization)) return next();
+            next(new Error("no autorizado"));
+        }
+    },
     //httpStaticAuth: {user:"user",pass:"$2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN."},
 
 /*******************************************************************************

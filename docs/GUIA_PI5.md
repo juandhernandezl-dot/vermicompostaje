@@ -64,6 +64,26 @@ NODERED_PUERTO=1880                      # 1881 si huerto-node-red usa el 1880
 
 En simulación, MongoDB usa `~/vermi-datos/mongo-sim`, así que los datos reales del paso 2 no se tocan.
 
+### Contraseñas de Node-RED
+
+El editor y el dashboard piden usuario y clave. Hay dos cuentas: `admin` para el editor y `huerto` para el dashboard (quien riega no debe poder cambiar los flujos). En `.env` se guarda el **hash** bcrypt, nunca la clave:
+
+```bash
+bash scripts/hash_clave.sh        # una vez para la clave del editor y otra para la del dashboard
+nano .env                         # pega cada hash ENTRE COMILLAS SIMPLES
+```
+
+```bash
+NODERED_ADMIN_USUARIO=admin
+NODERED_ADMIN_HASH='$2b$10$...'
+NODERED_DASH_USUARIO=huerto
+NODERED_DASH_HASH='$2b$10$...'
+```
+
+Si falta un par o el hash está mal copiado, ese acceso queda **bloqueado** y `docker compose logs nodered` muestra `[seguridad] ... ese acceso queda bloqueado`. Node-RED sigue publicando lecturas y lotes.
+
+La clave viaja sin cifrar dentro de la red (HTTP). Úsala solo en la red del huerto o del laboratorio, nunca expuesta a internet.
+
 ## 4. Construir y levantar
 
 ```bash
@@ -148,6 +168,12 @@ Frases de prueba:
 - `cierra todo`
 
 Las órdenes y las consultas de estado no usan el LLM, así que responden al instante aunque Ollama no esté listo.
+
+El contenedor `agente` también atiende `POST /chat` en `:8200`, solo dentro de la red de Docker (no publica puerto). Es la API que usará la página de chat del dashboard. Para probarla desde la Pi:
+
+```bash
+docker compose exec agente python -c "import json,urllib.request as u; r=u.urlopen(u.Request('http://127.0.0.1:8200/chat', json.dumps({'chat_id':'prueba-pi-01','texto':'¿cómo está la zona 1?'}).encode(), {'Content-Type':'application/json'})); print(json.load(r)['respuesta'])"
+```
 
 ## 8. Receptor del laboratorio contra la simulación
 

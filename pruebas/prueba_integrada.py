@@ -33,13 +33,13 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 11434). Si la prueba compartiera puertos con un stack encendido, sus servicios no podrian
 # abrirlos y las ordenes de la prueba le llegarian al stack real (en el huerto: riegos reales).
 P_ESP, P_MODBUS, P_API = 17201, 17202, 17203
-P_PUENTE, P_CONTROL, P_LLM = 17280, 17281, 17299
+P_PUENTE, P_CONTROL, P_LLM, P_CHAT = 17280, 17281, 17299, 17282
 API = f"http://127.0.0.1:{P_API}"
 
 
 def puertos_libres():
     ocupados = []
-    for p in (P_ESP, P_MODBUS, P_API, P_PUENTE, P_CONTROL, P_LLM):
+    for p in (P_ESP, P_MODBUS, P_API, P_PUENTE, P_CONTROL, P_LLM, P_CHAT):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Igual que los servidores reales: un puerto en TIME_WAIT de una corrida anterior
         # no cuenta como ocupado; solo cuenta otro programa ESCUCHANDO en el.
@@ -222,6 +222,8 @@ def main():
         def do_POST(self):
             d = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             llm_recibido.append(d)
+            if "lento" in d["messages"][-1]["content"]:     # LLM lento en la Pi (prueba [11])
+                time.sleep(5)
             b = json.dumps({"message": {"content": "Las lombrices comen restos de cocina."},
                             "done_reason": "stop"}).encode()
             self.send_response(200)
@@ -271,6 +273,60 @@ def main():
           "lo que no es orden ni consulta va al LLM con el estado fresco y sin razonamiento")
     r = di("cierra todo")
     check(r.startswith("Listo, cerré todas"), "cerrar todo funciona desde el agente")
+
+    print("\n[11] API /chat del agente (la que usa el dashboard)")
+    import servidor                                          # noqa: E402
+    srv_chat = ThreadingHTTPServer(("127.0.0.1", P_CHAT), servidor.Manejador)
+    srv_chat.daemon_threads = True
+    threading.Thread(target=srv_chat.serve_forever, daemon=True).start()
+    CH = f"http://127.0.0.1:{P_CHAT}"
+    A, B = "sesion-aaaa-0001", "sesion-bbbb-0002"
+    check(http("GET", CH + "/salud") == (200, {"ok": True}), "GET /salud responde")
+    malos = [({"chat_id": "corto", "texto": "hola"}, "chat_id de menos de 8 caracteres"),
+             ({"chat_id": "../../etc/x", "texto": "hola"}, "chat_id con caracteres raros"),
+             ({"chat_id": A, "texto": "   "}, "texto vacio"),
+             ({"chat_id": A, "texto": "x" * 501}, "texto de mas de 500 caracteres"),
+             ({"chat_id": A}, "sin texto"), (["no", "objeto"], "JSON que no es objeto")]
+    check(all(http("POST", CH + "/chat", c)[0] == 400 for c, _ in malos),
+          "entradas invalidas -> 400 (" + "; ".join(n for _, n in malos) + ")")
+    req = urlreq.Request(CH + "/chat", data=b"{no es json", method="POST")
+    try:
+        urlreq.urlopen(req, timeout=5)
+        codigo = 200
+    except HTTPError as e:
+        codigo = e.code
+    check(codigo == 400, "cuerpo que no es JSON -> 400")
+    req = urlreq.Request(CH + "/chat", data=b"x" * 5000, method="POST")
+    try:
+        urlreq.urlopen(req, timeout=5)
+        codigo = 200
+    except HTTPError as e:
+        codigo = e.code
+    check(codigo == 413, "cuerpo de mas de 4 KB -> 413")
+    codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "¿cómo está la zona 1?"})
+    check(codigo == 200 and "Zona 1: humedad" in d.get("respuesta", ""), "consulta por /chat")
+    codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "abre la válvula de la zona 1 por 1 minuto"})
+    check("SÍ o NO" in d.get("respuesta", ""), "abrir por /chat pide confirmación")
+    http("POST", CH + "/chat", {"chat_id": B, "texto": "sí"})
+    time.sleep(1)
+    check(not http("GET", API + "/estado")[1]["zonas"][0]["valvula_abierta"],
+          "el SÍ de otra sesión no ejecuta la orden pendiente de esta")
+    codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "sí"})
+    check(d.get("respuesta", "").startswith("Listo, abrí la válvula de la zona 1"), "con SÍ en la misma sesión, abre")
+    lenta = {}
+    hilo = threading.Thread(target=lambda: lenta.update(r=http("POST", CH + "/chat",
+                            {"chat_id": B, "texto": "cuéntame algo lento sobre lombrices"})))
+    hilo.start()
+    time.sleep(0.5)
+    t0 = time.time()
+    codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "cierra todo"})
+    dt = time.time() - t0
+    check(d.get("respuesta", "").startswith("Listo, cerré todas") and dt < 3,
+          f"'cierra todo' no espera a una pregunta lenta al LLM ({dt:.1f} s)")
+    hilo.join(10)
+    check(lenta.get("r", (0,))[0] == 200 and any("lento" in m["messages"][-1]["content"] for m in llm_recibido),
+          "la pregunta lenta sí pasó por el LLM y también termina")
+    srv_chat.shutdown()
 
     print()
     if fallos:

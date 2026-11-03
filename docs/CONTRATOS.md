@@ -39,6 +39,15 @@ Eventos que el ESP32 emite por su cuenta:
 | `POST /manual/cerrar` | `{"zona", "origen"}` | Siempre permitido, en cualquier modo. |
 | `POST /cerrar_todo` | `{"origen"}` | Todo a manual y cerrado. |
 
+### 3.1 HTTP del agente `agente:8200` (solo red interna de Docker; lo usa Node‑RED)
+
+Sin `ports:` en el compose: desde fuera de Docker no se alcanza. Es el mismo pipeline que `chat.py`.
+
+| Ruta | Cuerpo | Notas |
+|---|---|---|
+| `GET /salud` | — | `{"ok": true}`; lo usa el healthcheck. |
+| `POST /chat` | `{"chat_id": 8–64 de [A-Za-z0-9_-], "texto": 1–500 caracteres}` | `{"respuesta"}`. 400 si la entrada no es válida, 413 si el cuerpo pasa de 4 KB. Cada `chat_id` tiene su propia confirmación SÍ/NO pendiente (vence a los 60 s); se guarda como `web:<chat_id>`, aparte de la terminal. |
+
 ## 4. MongoDB `vermicompost`
 
 | Colección | Escribe | Documento |

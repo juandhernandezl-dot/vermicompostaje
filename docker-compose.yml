@@ -39,6 +39,12 @@ services:
     environment:
       <<: *tz
       MQTT_PREFIJO: ${MQTT_PREFIJO:-uao/vermicompost/huertolab}
+      # Contraseñas (hash bcrypt) del editor y del dashboard; ver .env.example.
+      # Si faltan, ese acceso queda bloqueado (nodered/settings.js).
+      NODERED_ADMIN_USUARIO: ${NODERED_ADMIN_USUARIO:-}
+      NODERED_ADMIN_HASH: ${NODERED_ADMIN_HASH:-}
+      NODERED_DASH_USUARIO: ${NODERED_DASH_USUARIO:-}
+      NODERED_DASH_HASH: ${NODERED_DASH_HASH:-}
     volumes:
       - ./nodered:/data
     ports:
@@ -140,6 +146,14 @@ services:
       LLM_BACKEND: ollama
       LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
       OLLAMA_BASE_URL: http://ollama:11434
+    # Sin "ports:": la API /chat (:8200) solo se alcanza desde la red interna
+    # de Docker (Node-RED). La terminal: docker compose exec -it agente python chat.py
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8200/salud', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   ollama:
     image: ollama/ollama:latest
