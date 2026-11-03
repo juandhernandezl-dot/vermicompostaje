@@ -135,7 +135,7 @@ def procesar_accion(chat_id, accion: dict) -> str:
     if tipo == "ambigua":
         return prompts.RESPUESTA_ACCION_AMBIGUA
     if tipo == "cerrar_todo":
-        return ejecutar(accion)
+        return ejecutar(accion, origen_de(chat_id))
     if accion.get("zona") is None:
         return prompts.RESPUESTA_ACCION_SIN_ZONA
     if tipo == "cambiar_modo" and accion.get("modo") is None:
@@ -144,7 +144,7 @@ def procesar_accion(chat_id, accion: dict) -> str:
                                     or not 1 <= accion["segundos"] <= config.RIEGO_MANUAL_MAX_S):
         return prompts.RESPUESTA_DURACION_INVALIDA.format(max=config.RIEGO_MANUAL_MAX_S // 60)
     if tipo == "cerrar_valvula":
-        return ejecutar(accion)
+        return ejecutar(accion, origen_de(chat_id))
     if tipo == "abrir_valvula":
         # Si la zona no esta en manual, el control rechazaria la orden: se dice
         # ya, en vez de pedir un SI para algo que no se va a poder hacer.
@@ -174,11 +174,31 @@ def resolver_confirmacion(chat_id, texto_usuario: str):
         return None
     if time.monotonic() > vence:
         return prompts.RESPUESTA_VENCIDA
-    return ejecutar(accion)
+    return ejecutar(accion, origen_de(chat_id))
 
 
-def _post(ruta, cuerpo):
-    cuerpo = dict(cuerpo, origen="agente")
+def pendiente_s(chat_id):
+    """Segundos que le quedan a la orden que espera SI/NO en este chat, o None."""
+    with _lock:
+        p = _pendientes.get(chat_id)
+    if p is None:
+        return None
+    resta = int(p[1] - time.monotonic())
+    return resta if resta > 0 else None
+
+
+def origen_de(chat_id) -> str:
+    """Quien dio la orden, para los registros de control y del puente:
+    'agente:terminal', 'agente:dashboard:<8 primeros de la sesion>'. Sin
+    cuentas por persona, la sesion del navegador es lo mas fino que hay."""
+    c = str(chat_id)
+    if c.startswith("web:"):
+        return "agente:dashboard:" + re.sub(r"[^\w-]", "", c[4:])[:8]
+    return "agente:" + (re.sub(r"[^\w-]", "", c)[:20] or "desconocido")
+
+
+def _post(ruta, cuerpo, origen="agente"):
+    cuerpo = dict(cuerpo, origen=origen)
     try:
         r = httpx.post(f"{config.CONTROL_URL}{ruta}", json=cuerpo, timeout=config.ACCION_TIMEOUT_S)
     except httpx.ConnectError:
@@ -213,12 +233,12 @@ def _fallo(codigo, datos, que):
     return f"No pude {que}; el sistema respondió: {err or codigo}. No se hizo ningún cambio."
 
 
-def ejecutar(accion: dict) -> str:
+def ejecutar(accion: dict, origen: str = "agente") -> str:
     """Nunca lanza excepcion; solo un 200 del control produce un mensaje de exito."""
     t = accion["tipo"]
     if t == "abrir_valvula":
         z, s = int(accion["zona"]), int(accion["segundos"])
-        codigo, d = _post("/manual/abrir", {"zona": z, "segundos": s})
+        codigo, d = _post("/manual/abrir", {"zona": z, "segundos": s}, origen)
         if codigo == 200:
             aplicado = int(d.get("segundos_aplicados", s))
             return (f"Listo, abrí la válvula de la zona {z}; el controlador de las válvulas lo confirmó. "
@@ -226,12 +246,12 @@ def ejecutar(accion: dict) -> str:
         return _fallo(codigo, d or {}, f"abrir la válvula de la zona {z}")
     if t == "cerrar_valvula":
         z = int(accion["zona"])
-        codigo, d = _post("/manual/cerrar", {"zona": z})
+        codigo, d = _post("/manual/cerrar", {"zona": z}, origen)
         if codigo == 200:
             return f"Listo, cerré la válvula de la zona {z}; el controlador de las válvulas lo confirmó."
         return _fallo(codigo, d or {}, f"cerrar la válvula de la zona {z}")
     if t == "cerrar_todo":
-        codigo, d = _post("/cerrar_todo", {})
+        codigo, d = _post("/cerrar_todo", {}, origen)
         if codigo == 200:
             return ("Listo, cerré todas las válvulas y dejé las tres zonas en modo manual: nada riega "
                     "solo hasta que alguien lo pida o vuelva a activar PI o RL.")
@@ -240,7 +260,7 @@ def ejecutar(accion: dict) -> str:
         zonas = [1, 2, 3] if accion["zona"] == "todas" else [int(accion["zona"])]
         bien, mal = [], []
         for z in zonas:
-            codigo, d = _post("/modo", {"zona": z, "modo": accion["modo"]})
+            codigo, d = _post("/modo", {"zona": z, "modo": accion["modo"]}, origen)
             (bien if codigo == 200 else mal).append((z, codigo, d or {}))
         partes = []
         if bien:

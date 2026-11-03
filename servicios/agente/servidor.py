@@ -3,7 +3,9 @@
 API HTTP del agente para el dashboard de Node-RED (el mismo pipeline que chat.py).
 
     POST /chat   {"chat_id": "<8-64 de [A-Za-z0-9_-]>", "texto": "..."}
-                 -> 200 {"respuesta": "..."}
+                 -> 200 {"respuesta": "...", "confirmar_s": 57 | null}
+                    confirmar_s: segundos que quedan para responder SI/NO a una orden
+                    pendiente (el dashboard muestra los botones mientras dure)
     GET  /salud  -> 200 {"ok": true}
 
 Solo escucha en la red interna de Docker (el compose NO publica su puerto):
@@ -22,6 +24,7 @@ logging.basicConfig(level=os.environ.get("LOG_NIVEL", "INFO"),
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import agente  # noqa: E402
+import comandos  # noqa: E402
 
 log = logging.getLogger("servidor")
 PUERTO = int(os.environ.get("AGENTE_PUERTO", "8200"))
@@ -71,11 +74,12 @@ class Manejador(BaseHTTPRequestHandler):
             return self._responder(400, {"error": f"texto de mas de {MAX_TEXTO} caracteres"})
         try:
             # Prefijo "web:" para no compartir confirmaciones con la terminal.
-            respuesta = agente.procesar("web:" + chat_id, texto)
+            clave = "web:" + chat_id
+            respuesta = agente.procesar(clave, texto)
         except Exception:                                      # noqa: BLE001
             log.exception("fallo procesando un mensaje del dashboard")
             return self._responder(500, {"error": "el agente fallo; revisa los logs del contenedor"})
-        self._responder(200, {"respuesta": respuesta})
+        self._responder(200, {"respuesta": respuesta, "confirmar_s": comandos.pendiente_s(clave)})
 
     def log_message(self, fmt, *args):
         if "/salud" not in str(args[:1]):                      # el healthcheck llamaria cada 30 s

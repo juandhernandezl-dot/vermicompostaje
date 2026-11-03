@@ -169,7 +169,17 @@ Frases de prueba:
 
 Las órdenes y las consultas de estado no usan el LLM, así que responden al instante aunque Ollama no esté listo.
 
-El contenedor `agente` también atiende `POST /chat` en `:8200`, solo dentro de la red de Docker (no publica puerto). Es la API que usará la página de chat del dashboard. Para probarla desde la Pi:
+### El agente desde el dashboard
+
+Con el perfil `agente` arriba, el dashboard tiene una segunda página, **Asistente** (`/dashboard/asistente`, en el menú ☰). Se entra con la cuenta `huerto`. Es el mismo agente que en la terminal:
+- Abrir o cambiar de modo muestra los botones grandes **Sí, hazlo** / **No** durante 60 s. Cerrar no pide confirmación.
+- Cada navegador tiene su propia conversación, que se conserva al recargar la página.
+- Si el agente está apagado, la página responde «El asistente no está disponible…» y no cambia nada.
+- Cada orden queda registrada con su canal: `agente:dashboard:<sesión>` o `agente:terminal` (campo `origen` en `riegos` y en los logs de `control`).
+
+**Criterio de éxito:** desde el celular, en la página Asistente, «abre la válvula de la zona 2 por 1 minuto» → **Sí, hazlo** → la respuesta empieza por «Listo, abrí» y `docker compose logs control | grep agente:dashboard` muestra la orden.
+
+La página llama a `POST /chat` del contenedor `agente` en `:8200`, solo dentro de la red de Docker (no publica puerto). Para probar esa API directamente desde la Pi:
 
 ```bash
 docker compose exec agente python -c "import json,urllib.request as u; r=u.urlopen(u.Request('http://127.0.0.1:8200/chat', json.dumps({'chat_id':'prueba-pi-01','texto':'¿cómo está la zona 1?'}).encode(), {'Content-Type':'application/json'})); print(json.load(r)['respuesta'])"

@@ -306,13 +306,18 @@ def main():
     codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "¿cómo está la zona 1?"})
     check(codigo == 200 and "Zona 1: humedad" in d.get("respuesta", ""), "consulta por /chat")
     codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "abre la válvula de la zona 1 por 1 minuto"})
-    check("SÍ o NO" in d.get("respuesta", ""), "abrir por /chat pide confirmación")
+    check("SÍ o NO" in d.get("respuesta", "") and 50 <= (d.get("confirmar_s") or 0) <= 60,
+          f"abrir por /chat pide confirmación y dice cuánto queda para responder ({d.get('confirmar_s')} s)")
     http("POST", CH + "/chat", {"chat_id": B, "texto": "sí"})
     time.sleep(1)
     check(not http("GET", API + "/estado")[1]["zonas"][0]["valvula_abierta"],
           "el SÍ de otra sesión no ejecuta la orden pendiente de esta")
     codigo, d = http("POST", CH + "/chat", {"chat_id": A, "texto": "sí"})
-    check(d.get("respuesta", "").startswith("Listo, abrí la válvula de la zona 1"), "con SÍ en la misma sesión, abre")
+    check(d.get("respuesta", "").startswith("Listo, abrí la válvula de la zona 1") and d.get("confirmar_s") is None,
+          "con SÍ en la misma sesión, abre (y ya no hay nada por confirmar)")
+    rg = db.riegos.find_one({"valvula": 1}, sort=[("_id", -1)])
+    check(rg is not None and rg.get("origen") == "agente:dashboard:sesion-a",
+          f"el riego queda registrado con canal y sesión ({rg and rg.get('origen')})")
     lenta = {}
     hilo = threading.Thread(target=lambda: lenta.update(r=http("POST", CH + "/chat",
                             {"chat_id": B, "texto": "cuéntame algo lento sobre lombrices"})))

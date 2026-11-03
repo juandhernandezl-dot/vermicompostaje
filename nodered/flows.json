@@ -193,6 +193,63 @@
         "groupType": "default"
     },
     {
+        "id": "chat_tab",
+        "type": "tab",
+        "label": "Asistente",
+        "disabled": false,
+        "info": "Pagina de chat del dashboard. Llama a la API interna del agente (POST http://agente:8200/chat).\nLas ordenes las ejecuta el agente por la API de control, con el mismo SI/NO que en la terminal."
+    },
+    {
+        "id": "chat_page",
+        "type": "ui-page",
+        "name": "Asistente",
+        "ui": "ui_base",
+        "path": "/asistente",
+        "icon": "chat",
+        "layout": "grid",
+        "theme": "ui_theme",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 2,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "chat_group",
+        "type": "ui-group",
+        "name": "Hablar con el asistente",
+        "page": "chat_page",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
         "id": "d83cc15b62c707d2",
         "type": "comment",
         "z": "5e75d88bef6fa344",
@@ -626,6 +683,106 @@
         "wires": [
             [
                 "85364fb6ef87e82e"
+            ]
+        ]
+    },
+    {
+        "id": "chat_comentario",
+        "type": "comment",
+        "z": "chat_tab",
+        "name": "Chat: navegador -> agente:8200/chat -> navegador",
+        "info": "Sin contraseña no se llega aqui: httpNodeAuth en las paginas y ioMiddleware en el socket (settings.js).",
+        "x": 230,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "chat_ui",
+        "type": "ui-template",
+        "z": "chat_tab",
+        "group": "chat_group",
+        "page": "",
+        "ui": "",
+        "name": "Chat con el agente",
+        "order": 1,
+        "width": "12",
+        "height": "0",
+        "head": "",
+        "format": "<template>\n  <div class=\"chat-agente\">\n    <div class=\"historial\" ref=\"hist\" aria-live=\"polite\">\n      <p v-if=\"!mensajes.length\" class=\"vacio\">\n        Escriba una pregunta o una orden. Por ejemplo: «¿cómo está la zona 1?»,\n        «abre la válvula de la zona 2 por 3 minutos» o «cierra todo».\n      </p>\n      <div v-for=\"(m, i) in mensajes\" :key=\"i\" :class=\"['burbuja', m.de, { error: m.error }]\">{{ m.texto }}</div>\n      <div v-if=\"esperando\" class=\"burbuja agente pensando\">Pensando…</div>\n    </div>\n\n    <div v-if=\"confirmarHasta\" class=\"confirmar\">\n      <button type=\"button\" class=\"si\" :disabled=\"!!esperando\" @click=\"enviar('sí')\">Sí, hazlo</button>\n      <button type=\"button\" class=\"no\" :disabled=\"!!esperando\" @click=\"enviar('no')\">No</button>\n      <span class=\"plazo\">Responda en {{ quedan }} s</span>\n    </div>\n\n    <div class=\"atajos\">\n      <button v-for=\"a in atajos\" :key=\"a\" type=\"button\" :disabled=\"!!esperando\" @click=\"enviar(a)\">{{ a }}</button>\n    </div>\n\n    <form class=\"entrada\" @submit.prevent=\"enviar(texto)\">\n      <input id=\"chat-agente-texto\" v-model=\"texto\" maxlength=\"500\" autocomplete=\"off\"\n             placeholder=\"Escriba aquí…\" aria-label=\"Mensaje para el asistente\" :disabled=\"!!esperando\">\n      <button type=\"submit\" :disabled=\"!!esperando || !texto.trim()\">Enviar</button>\n    </form>\n  </div>\n</template>\n\n<script>\nexport default {\n    data() {\n        return {\n            chatId: '', mensajes: [], texto: '', esperando: null,\n            confirmarHasta: 0, ahora: Date.now(), reloj: null,\n            atajos: ['¿Cómo está la zona 1?', '¿Cuánto se ha regado hoy?', 'Cierra todo']\n        }\n    },\n    computed: {\n        quedan() { return Math.max(0, Math.ceil((this.confirmarHasta - this.ahora) / 1000)) }\n    },\n    watch: {\n        // Las respuestas llegan a todos los navegadores abiertos: cada uno\n        // muestra solo la de su sesion y su pregunta en curso.\n        msg(m) {\n            const p = m && m.payload\n            if (!p || p.chat_id !== this.chatId || !this.esperando || p.id !== this.esperando.id) return\n            this.esperando = null\n            this.agregar('agente', String(p.texto || ''), !p.ok)\n            this.confirmarHasta = p.confirmar_s ? Date.now() + p.confirmar_s * 1000 : 0\n            this.guardar('agente_confirmar_' + this.chatId, String(this.confirmarHasta))\n        }\n    },\n    mounted() {\n        // Sesion por navegador que sobrevive al refresco (localStorage).\n        // crypto.randomUUID no existe en http:// (contexto no seguro); getRandomValues si.\n        this.chatId = this.leer('agente_chat_id') || this.nuevoId()\n        this.guardar('agente_chat_id', this.chatId)\n        try { this.mensajes = JSON.parse(this.leer('agente_hist_' + this.chatId) || '[]') } catch (e) { this.mensajes = [] }\n        if (!Array.isArray(this.mensajes)) this.mensajes = []\n        const c = Number(this.leer('agente_confirmar_' + this.chatId) || 0)\n        this.confirmarHasta = c > Date.now() ? c : 0\n        this.reloj = setInterval(() => {\n            this.ahora = Date.now()\n            if (this.confirmarHasta && this.ahora > this.confirmarHasta) this.confirmarHasta = 0\n            if (this.esperando && this.ahora - this.esperando.t > 200000) {\n                this.esperando = null\n                this.agregar('agente', 'El asistente no respondió a tiempo. Intente de nuevo.', true)\n            }\n        }, 1000)\n        this.bajar()\n    },\n    unmounted() { clearInterval(this.reloj) },\n    methods: {\n        nuevoId() {\n            const b = new Uint8Array(16)\n            crypto.getRandomValues(b)\n            return Array.from(b, x => x.toString(16).padStart(2, '0')).join('')\n        },\n        leer(k) { try { return localStorage.getItem(k) } catch (e) { return null } },\n        guardar(k, v) { try { localStorage.setItem(k, v) } catch (e) { /* sin almacenamiento: solo se pierde el historial */ } },\n        agregar(de, texto, error) {\n            this.mensajes.push({ de, texto, error: !!error })\n            if (this.mensajes.length > 40) this.mensajes.splice(0, this.mensajes.length - 40)\n            this.guardar('agente_hist_' + this.chatId, JSON.stringify(this.mensajes))\n            this.bajar()\n        },\n        bajar() { this.$nextTick(() => { const h = this.$refs.hist; if (h) h.scrollTop = h.scrollHeight }) },\n        enviar(t) {\n            t = String(t || '').trim().slice(0, 500)\n            if (!t || this.esperando) return\n            const id = Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36)\n            this.agregar('yo', t)\n            this.texto = ''\n            this.confirmarHasta = 0\n            this.guardar('agente_confirmar_' + this.chatId, '0')\n            this.esperando = { id, t: Date.now() }\n            this.send({ payload: { chat_id: this.chatId, id, texto: t } })\n        }\n    }\n}\n</script>\n\n<style>\n.chat-agente { display: flex; flex-direction: column; gap: 12px; width: 100%; }\n.chat-agente .historial { display: flex; flex-direction: column; gap: 8px; min-height: 240px; max-height: 55vh;\n  overflow-y: auto; padding: 8px; border: 1px solid #d5ddd5; border-radius: 8px; background: #f7faf7; }\n.chat-agente .vacio { color: #55635a; margin: 4px; line-height: 1.5; }\n.chat-agente .burbuja { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.45;\n  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.05rem; color: #1d231f; }\n.chat-agente .burbuja.yo { align-self: flex-end; background: #2e7d32; color: #fff; }\n.chat-agente .burbuja.agente { align-self: flex-start; background: #fff; border: 1px solid #d5ddd5; }\n.chat-agente .burbuja.error { border-color: #c0392b; background: #fdecea; }\n.chat-agente .pensando { color: #55635a; font-style: italic; }\n.chat-agente .confirmar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }\n.chat-agente .confirmar button { min-height: 56px; min-width: 140px; font-size: 1.2rem; font-weight: 600;\n  border-radius: 10px; border: 0; cursor: pointer; color: #fff; }\n.chat-agente .confirmar .si { background: #2e7d32; }\n.chat-agente .confirmar .no { background: #6b746d; }\n.chat-agente .plazo { color: #55635a; }\n.chat-agente .atajos { display: flex; flex-wrap: wrap; gap: 8px; }\n.chat-agente .atajos button { padding: 8px 12px; border-radius: 999px; border: 1px solid #2e7d32;\n  background: #fff; color: #2e7d32; cursor: pointer; font-size: 0.95rem; }\n.chat-agente .entrada { display: flex; gap: 8px; }\n.chat-agente .entrada input { flex: 1; min-width: 0; padding: 12px; font-size: 1.05rem; border: 1px solid #b9c4bb;\n  border-radius: 8px; background: #fff; color: #1d231f; }\n.chat-agente .entrada button { padding: 0 18px; font-size: 1.05rem; border: 0; border-radius: 8px;\n  background: #2e7d32; color: #fff; cursor: pointer; }\n.chat-agente button:disabled { opacity: 0.5; cursor: default; }\n.chat-agente button:focus-visible, .chat-agente input:focus-visible { outline: 3px solid #81c784; outline-offset: 2px; }\n</style>\n",
+        "storeOutMessages": false,
+        "passthru": false,
+        "resendOnRefresh": false,
+        "templateScope": "local",
+        "className": "",
+        "x": 160,
+        "y": 140,
+        "wires": [
+            [
+                "chat_preparar"
+            ]
+        ]
+    },
+    {
+        "id": "chat_preparar",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Preparar pregunta",
+        "func": "// Valida lo que manda el navegador y arma la llamada a la API interna del agente.\n// La respuesta vuelve a TODOS los navegadores con la pagina abierta; cada uno\n// muestra solo la de su chat_id y su id de pregunta (ver el ui-template).\nconst p = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nconst chat_id = String(p.chat_id || '');\nconst id = String(p.id || '');\nconst texto = String(p.texto || '').trim().slice(0, 500);\nif (!/^[A-Za-z0-9_-]{8,64}$/.test(chat_id) || !/^[A-Za-z0-9]{1,40}$/.test(id) || !texto) {\n    node.warn('Mensaje del chat descartado (formato invalido)');\n    return null;\n}\nreturn {\n    url: (env.get('AGENTE_URL') || 'http://agente:8200') + '/chat',\n    headers: { 'Content-Type': 'application/json' },\n    payload: { chat_id, texto },\n    requestTimeout: 200000,      // el LLM en la Pi puede tardar; el agente corta a los 180 s\n    chat: { chat_id, id }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 140,
+        "wires": [
+            [
+                "chat_http"
+            ]
+        ]
+    },
+    {
+        "id": "chat_http",
+        "type": "http request",
+        "z": "chat_tab",
+        "name": "POST agente /chat",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 590,
+        "y": 140,
+        "wires": [
+            [
+                "chat_responder"
+            ]
+        ]
+    },
+    {
+        "id": "chat_responder",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Respuesta para el chat",
+        "func": "// Traduce la respuesta HTTP del agente al formato del ui-template.\nconst c = msg.chat || {};\nconst s = msg.statusCode;\nconst d = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nlet texto, ok = false, confirmar_s = null;\nif (s === 200 && typeof d.respuesta === 'string') {\n    texto = d.respuesta;\n    ok = true;\n    confirmar_s = Number.isFinite(d.confirmar_s) && d.confirmar_s > 0 ? d.confirmar_s : null;\n    node.status({ fill: 'green', shape: 'dot', text: 'respondio ' + new Date().toLocaleTimeString() });\n} else if (s === 400 || s === 413) {\n    texto = 'No pude procesar ese mensaje (' + (d.error || 'formato no valido') + ').';\n} else {\n    // Conexion rechazada / nombre no resuelto (perfil \"agente\" apagado), tiempo agotado o 5xx\n    texto = 'El asistente no está disponible en este momento. No se hizo ningún cambio en las válvulas. Intente de nuevo en unos minutos.';\n    node.status({ fill: 'red', shape: 'ring', text: 'no disponible: ' + s });\n    node.warn('Agente no disponible: ' + s + ' ' + String(msg.payload).slice(0, 200));\n}\nreturn { payload: { chat_id: c.chat_id, id: c.id, texto, ok, confirmar_s } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 140,
+        "wires": [
+            [
+                "chat_ui"
             ]
         ]
     }

@@ -52,7 +52,7 @@ servicios/
   sensores/               emisor Modbus → MongoDB + MQTT
   actuadores/             puente HTTP ↔ ESP32 (único dueño del USB) y registro de riegos
   control/                RL / PI / MANUAL por zona, árbitro del modo (control.json)
-  agente/                 agente conversacional: terminal (chat.py) y API interna /chat para el dashboard
+  agente/                 agente conversacional: terminal (chat.py) y página Asistente del dashboard (API interna /chat)
 nodered/                  flujos del dashboard y lotes (imagen con los nodos ya instalados)
 firmware/
   actuador_valvulas/      firmware del ESP32, compatible con el puente

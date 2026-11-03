@@ -46,7 +46,7 @@ Sin `ports:` en el compose: desde fuera de Docker no se alcanza. Es el mismo pip
 | Ruta | Cuerpo | Notas |
 |---|---|---|
 | `GET /salud` | — | `{"ok": true}`; lo usa el healthcheck. |
-| `POST /chat` | `{"chat_id": 8–64 de [A-Za-z0-9_-], "texto": 1–500 caracteres}` | `{"respuesta"}`. 400 si la entrada no es válida, 413 si el cuerpo pasa de 4 KB. Cada `chat_id` tiene su propia confirmación SÍ/NO pendiente (vence a los 60 s); se guarda como `web:<chat_id>`, aparte de la terminal. |
+| `POST /chat` | `{"chat_id": 8–64 de [A-Za-z0-9_-], "texto": 1–500 caracteres}` | `{"respuesta", "confirmar_s"}`; `confirmar_s` son los segundos que quedan para responder SÍ/NO, o `null`. Las órdenes llegan a `control` con `origen` = `agente:dashboard:<8 primeros del chat_id>`. 400 si la entrada no es válida, 413 si el cuerpo pasa de 4 KB. Cada `chat_id` tiene su propia confirmación SÍ/NO pendiente (vence a los 60 s); se guarda como `web:<chat_id>`, aparte de la terminal. |
 
 ## 4. MongoDB `vermicompost`
 
