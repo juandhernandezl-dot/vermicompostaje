@@ -708,7 +708,7 @@
         "width": "12",
         "height": "0",
         "head": "",
-        "format": "<template>\n  <div class=\"chat-agente\">\n    <div class=\"historial\" ref=\"hist\" aria-live=\"polite\">\n      <p v-if=\"!mensajes.length\" class=\"vacio\">\n        Escriba una pregunta o una orden. Por ejemplo: «¿cómo está la zona 1?»,\n        «abre la válvula de la zona 2 por 3 minutos» o «cierra todo».\n      </p>\n      <div v-for=\"(m, i) in mensajes\" :key=\"i\" :class=\"['burbuja', m.de, { error: m.error }]\">{{ m.texto }}</div>\n      <div v-if=\"esperando\" class=\"burbuja agente pensando\">Pensando…</div>\n    </div>\n\n    <div v-if=\"confirmarHasta\" class=\"confirmar\">\n      <button type=\"button\" class=\"si\" :disabled=\"!!esperando\" @click=\"enviar('sí')\">Sí, hazlo</button>\n      <button type=\"button\" class=\"no\" :disabled=\"!!esperando\" @click=\"enviar('no')\">No</button>\n      <span class=\"plazo\">Responda en {{ quedan }} s</span>\n    </div>\n\n    <div class=\"atajos\">\n      <button v-for=\"a in atajos\" :key=\"a\" type=\"button\" :disabled=\"!!esperando\" @click=\"enviar(a)\">{{ a }}</button>\n    </div>\n\n    <form class=\"entrada\" @submit.prevent=\"enviar(texto)\">\n      <input id=\"chat-agente-texto\" v-model=\"texto\" maxlength=\"500\" autocomplete=\"off\"\n             placeholder=\"Escriba aquí…\" aria-label=\"Mensaje para el asistente\" :disabled=\"!!esperando\">\n      <button type=\"submit\" :disabled=\"!!esperando || !texto.trim()\">Enviar</button>\n    </form>\n  </div>\n</template>\n\n<script>\nexport default {\n    data() {\n        return {\n            chatId: '', mensajes: [], texto: '', esperando: null,\n            confirmarHasta: 0, ahora: Date.now(), reloj: null,\n            atajos: ['¿Cómo está la zona 1?', '¿Cuánto se ha regado hoy?', 'Cierra todo']\n        }\n    },\n    computed: {\n        quedan() { return Math.max(0, Math.ceil((this.confirmarHasta - this.ahora) / 1000)) }\n    },\n    watch: {\n        // Las respuestas llegan a todos los navegadores abiertos: cada uno\n        // muestra solo la de su sesion y su pregunta en curso.\n        msg(m) {\n            const p = m && m.payload\n            if (!p || p.chat_id !== this.chatId || !this.esperando || p.id !== this.esperando.id) return\n            this.esperando = null\n            this.agregar('agente', String(p.texto || ''), !p.ok)\n            this.confirmarHasta = p.confirmar_s ? Date.now() + p.confirmar_s * 1000 : 0\n            this.guardar('agente_confirmar_' + this.chatId, String(this.confirmarHasta))\n        }\n    },\n    mounted() {\n        // Sesion por navegador que sobrevive al refresco (localStorage).\n        // crypto.randomUUID no existe en http:// (contexto no seguro); getRandomValues si.\n        this.chatId = this.leer('agente_chat_id') || this.nuevoId()\n        this.guardar('agente_chat_id', this.chatId)\n        try { this.mensajes = JSON.parse(this.leer('agente_hist_' + this.chatId) || '[]') } catch (e) { this.mensajes = [] }\n        if (!Array.isArray(this.mensajes)) this.mensajes = []\n        const c = Number(this.leer('agente_confirmar_' + this.chatId) || 0)\n        this.confirmarHasta = c > Date.now() ? c : 0\n        this.reloj = setInterval(() => {\n            this.ahora = Date.now()\n            if (this.confirmarHasta && this.ahora > this.confirmarHasta) this.confirmarHasta = 0\n            if (this.esperando && this.ahora - this.esperando.t > 200000) {\n                this.esperando = null\n                this.agregar('agente', 'El asistente no respondió a tiempo. Intente de nuevo.', true)\n            }\n        }, 1000)\n        this.bajar()\n    },\n    unmounted() { clearInterval(this.reloj) },\n    methods: {\n        nuevoId() {\n            const b = new Uint8Array(16)\n            crypto.getRandomValues(b)\n            return Array.from(b, x => x.toString(16).padStart(2, '0')).join('')\n        },\n        leer(k) { try { return localStorage.getItem(k) } catch (e) { return null } },\n        guardar(k, v) { try { localStorage.setItem(k, v) } catch (e) { /* sin almacenamiento: solo se pierde el historial */ } },\n        agregar(de, texto, error) {\n            this.mensajes.push({ de, texto, error: !!error })\n            if (this.mensajes.length > 40) this.mensajes.splice(0, this.mensajes.length - 40)\n            this.guardar('agente_hist_' + this.chatId, JSON.stringify(this.mensajes))\n            this.bajar()\n        },\n        bajar() { this.$nextTick(() => { const h = this.$refs.hist; if (h) h.scrollTop = h.scrollHeight }) },\n        enviar(t) {\n            t = String(t || '').trim().slice(0, 500)\n            if (!t || this.esperando) return\n            const id = Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36)\n            this.agregar('yo', t)\n            this.texto = ''\n            this.confirmarHasta = 0\n            this.guardar('agente_confirmar_' + this.chatId, '0')\n            this.esperando = { id, t: Date.now() }\n            this.send({ payload: { chat_id: this.chatId, id, texto: t } })\n        }\n    }\n}\n</script>\n\n<style>\n.chat-agente { display: flex; flex-direction: column; gap: 12px; width: 100%; }\n.chat-agente .historial { display: flex; flex-direction: column; gap: 8px; min-height: 240px; max-height: 55vh;\n  overflow-y: auto; padding: 8px; border: 1px solid #d5ddd5; border-radius: 8px; background: #f7faf7; }\n.chat-agente .vacio { color: #55635a; margin: 4px; line-height: 1.5; }\n.chat-agente .burbuja { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.45;\n  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.05rem; color: #1d231f; }\n.chat-agente .burbuja.yo { align-self: flex-end; background: #2e7d32; color: #fff; }\n.chat-agente .burbuja.agente { align-self: flex-start; background: #fff; border: 1px solid #d5ddd5; }\n.chat-agente .burbuja.error { border-color: #c0392b; background: #fdecea; }\n.chat-agente .pensando { color: #55635a; font-style: italic; }\n.chat-agente .confirmar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }\n.chat-agente .confirmar button { min-height: 56px; min-width: 140px; font-size: 1.2rem; font-weight: 600;\n  border-radius: 10px; border: 0; cursor: pointer; color: #fff; }\n.chat-agente .confirmar .si { background: #2e7d32; }\n.chat-agente .confirmar .no { background: #6b746d; }\n.chat-agente .plazo { color: #55635a; }\n.chat-agente .atajos { display: flex; flex-wrap: wrap; gap: 8px; }\n.chat-agente .atajos button { padding: 8px 12px; border-radius: 999px; border: 1px solid #2e7d32;\n  background: #fff; color: #2e7d32; cursor: pointer; font-size: 0.95rem; }\n.chat-agente .entrada { display: flex; gap: 8px; }\n.chat-agente .entrada input { flex: 1; min-width: 0; padding: 12px; font-size: 1.05rem; border: 1px solid #b9c4bb;\n  border-radius: 8px; background: #fff; color: #1d231f; }\n.chat-agente .entrada button { padding: 0 18px; font-size: 1.05rem; border: 0; border-radius: 8px;\n  background: #2e7d32; color: #fff; cursor: pointer; }\n.chat-agente button:disabled { opacity: 0.5; cursor: default; }\n.chat-agente button:focus-visible, .chat-agente input:focus-visible { outline: 3px solid #81c784; outline-offset: 2px; }\n</style>\n",
+        "format": "<template>\n  <div class=\"chat-agente\">\n    <div class=\"historial\" ref=\"hist\" aria-live=\"polite\">\n      <p v-if=\"!mensajes.length\" class=\"vacio\">\n        Escriba una pregunta o una orden. Por ejemplo: «¿cómo está la zona 1?»,\n        «abre la válvula de la zona 2 por 3 minutos» o «cierra todo».\n      </p>\n      <div v-for=\"(m, i) in mensajes\" :key=\"i\" :class=\"['burbuja', m.de, { error: m.error }]\">{{ m.texto }}</div>\n      <div v-if=\"esperando\" class=\"burbuja agente pensando\">Pensando…</div>\n    </div>\n\n    <div v-if=\"confirmarHasta\" class=\"confirmar\">\n      <button type=\"button\" class=\"si\" :disabled=\"!!esperando\" @click=\"enviar('sí')\">Sí, hazlo</button>\n      <button type=\"button\" class=\"no\" :disabled=\"!!esperando\" @click=\"enviar('no')\">No</button>\n      <span class=\"plazo\">Responda en {{ quedan }} s</span>\n    </div>\n\n    <div class=\"atajos\">\n      <button v-for=\"a in atajos\" :key=\"a\" type=\"button\" :disabled=\"!!esperando\" @click=\"enviar(a)\">{{ a }}</button>\n    </div>\n\n    <form class=\"entrada\" @submit.prevent=\"enviar(texto)\">\n      <input id=\"chat-agente-texto\" v-model=\"texto\" maxlength=\"500\" autocomplete=\"off\"\n             placeholder=\"Escriba aquí…\" aria-label=\"Mensaje para el asistente\" :disabled=\"!!esperando || grabando\">\n      <button type=\"button\" id=\"chat-agente-mic\" :class=\"['mic', { grabando }]\"\n              :disabled=\"(!!esperando || transcribiendo) && !grabando\" @click=\"hablar\"\n              :aria-label=\"grabando ? 'Terminar la grabación y enviar' : 'Hablar con el asistente'\">{{ etiquetaMic }}</button>\n      <button type=\"submit\" :disabled=\"!!esperando || grabando || !texto.trim()\">Enviar</button>\n    </form>\n\n    <div v-if=\"hablando || aviso\" class=\"estado-voz\" aria-live=\"polite\">\n      <span v-if=\"aviso\">{{ aviso }}</span>\n      <template v-if=\"hablando\"><span>🔊 Leyendo la respuesta…</span>\n        <button type=\"button\" @click=\"callar\">Callar</button></template>\n    </div>\n  </div>\n</template>\n\n<script>\nexport default {\n    data() {\n        return {\n            chatId: '', mensajes: [], texto: '', esperando: null,\n            confirmarHasta: 0, ahora: Date.now(), reloj: null,\n            grabando: false, inicioGrab: 0, maxGrabS: 28,\n            silencio: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=', transcribiendo: false, hablando: false, aviso: '',\n            atajos: ['¿Cómo está la zona 1?', '¿Cuánto se ha regado hoy?', 'Cierra todo']\n        }\n    },\n    computed: {\n        quedan() { return Math.max(0, Math.ceil((this.confirmarHasta - this.ahora) / 1000)) },\n        segGrab() { return Math.max(0, Math.floor((this.ahora - this.inicioGrab) / 1000)) },\n        etiquetaMic() {\n            if (this.grabando) return '⏹ Terminar (' + this.segGrab + ' s)'\n            return this.transcribiendo ? 'Escuchando…' : '🎤 Hablar'\n        }\n    },\n    watch: {\n        // Las respuestas llegan a todos los navegadores abiertos: cada uno\n        // muestra solo la de su sesion y su pregunta en curso.\n        msg(m) {\n            const p = m && m.payload\n            if (!p || p.chat_id !== this.chatId || !this.esperando || p.id !== this.esperando.id) return\n            const porVoz = this.esperando.voz\n            this.esperando = null\n            this.agregar('agente', String(p.texto || ''), !p.ok)\n            if (porVoz && p.ok) this.decir(String(p.texto || ''))\n            this.confirmarHasta = p.confirmar_s ? Date.now() + p.confirmar_s * 1000 : 0\n            this.guardar('agente_confirmar_' + this.chatId, String(this.confirmarHasta))\n        }\n    },\n    mounted() {\n        // Propiedad no declarada en data(): Vue no la envuelve en proxies (MediaRecorder/Audio fallarian).\n        // (Dashboard 2 no admite el hook created() en ui-template: se crea aqui.)\n        this.nat = { grabador: null, flujo: null, trozos: [], audio: null, urlAudio: null }\n        // Sesion por navegador que sobrevive al refresco (localStorage).\n        // crypto.randomUUID no existe en http:// (contexto no seguro); getRandomValues si.\n        this.chatId = this.leer('agente_chat_id') || this.nuevoId()\n        this.guardar('agente_chat_id', this.chatId)\n        try { this.mensajes = JSON.parse(this.leer('agente_hist_' + this.chatId) || '[]') } catch (e) { this.mensajes = [] }\n        if (!Array.isArray(this.mensajes)) this.mensajes = []\n        const c = Number(this.leer('agente_confirmar_' + this.chatId) || 0)\n        this.confirmarHasta = c > Date.now() ? c : 0\n        this.reloj = setInterval(() => {\n            this.ahora = Date.now()\n            if (this.confirmarHasta && this.ahora > this.confirmarHasta) this.confirmarHasta = 0\n            if (this.grabando && this.segGrab >= this.maxGrabS) this.hablar()\n            if (this.esperando && this.ahora - this.esperando.t > 200000) {\n                this.esperando = null\n                this.agregar('agente', 'El asistente no respondió a tiempo. Intente de nuevo.', true)\n            }\n        }, 1000)\n        this.bajar()\n    },\n    unmounted() { clearInterval(this.reloj); this.soltarMic(); this.callar() },\n    methods: {\n        nuevoId() {\n            const b = new Uint8Array(16)\n            crypto.getRandomValues(b)\n            return Array.from(b, x => x.toString(16).padStart(2, '0')).join('')\n        },\n        leer(k) { try { return localStorage.getItem(k) } catch (e) { return null } },\n        guardar(k, v) { try { localStorage.setItem(k, v) } catch (e) { /* sin almacenamiento: solo se pierde el historial */ } },\n        agregar(de, texto, error) {\n            this.mensajes.push({ de, texto, error: !!error })\n            if (this.mensajes.length > 40) this.mensajes.splice(0, this.mensajes.length - 40)\n            this.guardar('agente_hist_' + this.chatId, JSON.stringify(this.mensajes))\n            this.bajar()\n        },\n        soltarMic() {\n            if (this.nat.flujo) this.nat.flujo.getTracks().forEach(t => t.stop())\n            this.nat.flujo = null; this.nat.grabador = null; this.nat.trozos = []; this.grabando = false\n        },\n        async hablar() {\n            this.aviso = ''\n            if (this.grabando) { if (this.nat.grabador && this.nat.grabador.state !== 'inactive') this.nat.grabador.stop(); return }\n            this.callar()\n            // Desbloquea el audio dentro del toque del usuario (iOS/Safari no deja reproducir despues si no).\n            try { this.nat.audio = this.nat.audio || new Audio(); this.nat.audio.src = this.silencio; this.nat.audio.play().catch(() => {}) } catch (e) { /* sin audio */ }\n            if (!window.isSecureContext || !navigator.mediaDevices || !window.MediaRecorder) {\n                this.aviso = 'El micrófono solo funciona en una dirección segura (https://) o en un navegador compatible. Escriba su pregunta.'\n                return\n            }\n            try {\n                this.nat.flujo = await navigator.mediaDevices.getUserMedia({ audio: true })\n            } catch (e) {\n                this.aviso = (e && e.name === 'NotFoundError')\n                    ? 'No encontré un micrófono en este equipo.'\n                    : 'No tengo permiso para usar el micrófono. Permítalo en el navegador (candado junto a la dirección) o escriba su pregunta.'\n                return\n            }\n            const tipos = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']\n            const tipo = tipos.find(t => MediaRecorder.isTypeSupported(t))\n            try {\n                this.nat.grabador = tipo ? new MediaRecorder(this.nat.flujo, { mimeType: tipo }) : new MediaRecorder(this.nat.flujo)\n            } catch (e) { this.soltarMic(); this.aviso = 'Este navegador no puede grabar audio. Escriba su pregunta.'; return }\n            this.nat.trozos = []\n            this.nat.grabador.ondataavailable = ev => { if (ev.data && ev.data.size) this.nat.trozos.push(ev.data) }\n            this.nat.grabador.onstop = () => {\n                const blob = new Blob(this.nat.trozos, { type: this.nat.grabador ? this.nat.grabador.mimeType : '' })\n                const dur = (Date.now() - this.inicioGrab) / 1000\n                this.soltarMic()\n                if (dur < 0.6 || blob.size < 800) { this.aviso = 'No alcancé a oír nada. Intente de nuevo, hablando más cerca.'; return }\n                this.transcribir(blob)\n            }\n            this.inicioGrab = Date.now(); this.ahora = this.inicioGrab\n            this.nat.grabador.start()\n            this.grabando = true\n        },\n        async transcribir(blob) {\n            this.transcribiendo = true\n            const ctl = new AbortController()\n            const corte = setTimeout(() => ctl.abort(), 100000)\n            try {\n                const r = await fetch('/asistente/voz/escuchar', { method: 'POST', body: blob, signal: ctl.signal,\n                                                                    headers: { 'Content-Type': 'application/octet-stream' } })\n                const d = r.ok ? await r.json() : { ok: false, error: 'No pude enviar el audio (' + r.status + '). Escriba su pregunta.' }\n                if (d.ok && d.texto) this.enviar(d.texto, true)\n                else this.aviso = d.ok ? 'No entendí lo que dijo. Intente de nuevo, hablando más cerca.' : String(d.error || 'No pude entender el audio.')\n            } catch (e) {\n                this.aviso = 'No pude procesar el audio (sin conexión o tardó demasiado). Escriba su pregunta.'\n            } finally { clearTimeout(corte); this.transcribiendo = false }\n        },\n        async decir(texto) {          // (leer(k) ya existe: lee localStorage)\n            try {\n                const r = await fetch('/asistente/voz/hablar', { method: 'POST', headers: { 'Content-Type': 'application/json' },\n                                                                  body: JSON.stringify({ texto }) })\n                if (!r.ok) throw new Error('voz ' + r.status)\n                const url = URL.createObjectURL(await r.blob())\n                this.callar()\n                this.nat.urlAudio = url\n                this.nat.audio = this.nat.audio || new Audio()\n                this.nat.audio.src = url\n                this.nat.audio.onended = () => this.callar()\n                this.hablando = true\n                await this.nat.audio.play()\n            } catch (e) {\n                this.callar()\n                this.aviso = 'No pude leer la respuesta en voz alta; está escrita arriba.'\n            }\n        },\n        callar() {\n            if (this.nat.audio) { this.nat.audio.onended = null; try { this.nat.audio.pause() } catch (e) { /* ya parado */ } }\n            if (this.nat.urlAudio) { URL.revokeObjectURL(this.nat.urlAudio); this.nat.urlAudio = null }\n            this.hablando = false\n        },\n        bajar() { this.$nextTick(() => { const h = this.$refs.hist; if (h) h.scrollTop = h.scrollHeight }) },\n        enviar(t, porVoz) {\n            t = String(t || '').trim().slice(0, 500)\n            if (!t || this.esperando) return\n            this.aviso = ''\n            this.callar()\n            const id = Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36)\n            this.agregar('yo', t)\n            this.texto = ''\n            this.confirmarHasta = 0\n            this.guardar('agente_confirmar_' + this.chatId, '0')\n            this.esperando = { id, t: Date.now(), voz: porVoz === true }\n            this.send({ payload: { chat_id: this.chatId, id, texto: t } })\n        }\n    }\n}\n</script>\n\n<style>\n.chat-agente { display: flex; flex-direction: column; gap: 12px; width: 100%; }\n.chat-agente .historial { display: flex; flex-direction: column; gap: 8px; min-height: 240px; max-height: 55vh;\n  overflow-y: auto; padding: 8px; border: 1px solid #d5ddd5; border-radius: 8px; background: #f7faf7; }\n.chat-agente .vacio { color: #55635a; margin: 4px; line-height: 1.5; }\n.chat-agente .burbuja { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.45;\n  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.05rem; color: #1d231f; }\n.chat-agente .burbuja.yo { align-self: flex-end; background: #2e7d32; color: #fff; }\n.chat-agente .burbuja.agente { align-self: flex-start; background: #fff; border: 1px solid #d5ddd5; }\n.chat-agente .burbuja.error { border-color: #c0392b; background: #fdecea; }\n.chat-agente .pensando { color: #55635a; font-style: italic; }\n.chat-agente .confirmar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }\n.chat-agente .confirmar button { min-height: 56px; min-width: 140px; font-size: 1.2rem; font-weight: 600;\n  border-radius: 10px; border: 0; cursor: pointer; color: #fff; }\n.chat-agente .confirmar .si { background: #2e7d32; }\n.chat-agente .confirmar .no { background: #6b746d; }\n.chat-agente .plazo { color: #55635a; }\n.chat-agente .atajos { display: flex; flex-wrap: wrap; gap: 8px; }\n.chat-agente .atajos button { padding: 8px 12px; border-radius: 999px; border: 1px solid #2e7d32;\n  background: #fff; color: #2e7d32; cursor: pointer; font-size: 0.95rem; }\n.chat-agente .entrada { display: flex; flex-wrap: wrap; gap: 8px; }\n.chat-agente .entrada input { flex: 1 1 180px; min-width: 0; padding: 12px; font-size: 1.05rem; border: 1px solid #b9c4bb;\n  border-radius: 8px; background: #fff; color: #1d231f; }\n.chat-agente .entrada button { min-height: 46px; padding: 0 18px; font-size: 1.05rem; border: 0; border-radius: 8px;\n  background: #2e7d32; color: #fff; cursor: pointer; }\n.chat-agente .entrada .mic { background: #fff; color: #2e7d32; border: 2px solid #2e7d32; min-width: 108px; font-weight: 600; }\n.chat-agente .entrada .mic.grabando { background: #c0392b; border-color: #c0392b; color: #fff; animation: latido 1.2s infinite; }\n@keyframes latido { 50% { opacity: 0.75; } }\n.chat-agente .estado-voz { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: #55635a; }\n.chat-agente .estado-voz button { padding: 6px 12px; border-radius: 8px; border: 1px solid #6b746d; background: #fff; cursor: pointer; }\n@media (max-width: 520px) { .chat-agente .entrada input { flex: 1 1 100%; } .chat-agente .entrada .mic { flex: 1; } }\n.chat-agente button:disabled { opacity: 0.5; cursor: default; }\n.chat-agente button:focus-visible, .chat-agente input:focus-visible { outline: 3px solid #81c784; outline-offset: 2px; }\n</style>\n",
         "storeOutMessages": false,
         "passthru": false,
         "resendOnRefresh": false,
@@ -785,5 +785,205 @@
                 "chat_ui"
             ]
         ]
+    },
+    {
+        "id": "voz_comentario",
+        "type": "comment",
+        "z": "chat_tab",
+        "name": "Voz: navegador -> /asistente/voz/* -> voz:8300",
+        "info": "El boton del microfono de la pagina graba, manda el audio a /asistente/voz/escuchar (Whisper) y el texto entra al mismo chat de siempre. Si la pregunta fue hablada, la respuesta se pide a /asistente/voz/hablar (Piper).\nEstas rutas tambien estan detras de httpNodeAuth (misma contraseña del dashboard). Necesita HTTPS en el navegador (settings.js).",
+        "x": 250,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "voz_in_escuchar",
+        "type": "http in",
+        "z": "chat_tab",
+        "name": "POST /asistente/voz/escuchar",
+        "url": "/asistente/voz/escuchar",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 300,
+        "wires": [
+            [
+                "voz_prep_escuchar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_prep_escuchar",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Validar audio",
+        "func": "// Audio grabado por el navegador (webm/ogg/mp4) -> servicio de voz (Whisper).\n// Todo lo que sale mal vuelve al navegador como {ok:false, error} con un texto para la persona.\nconst b = msg.payload;\nconst MAX = 3 * 1024 * 1024;\nif (!Buffer.isBuffer(b) || b.length < 500 || b.length > MAX) {\n    msg.statusCode = 200;\n    msg.headers = { 'Cache-Control': 'no-store' };\n    msg.payload = { ok: false, error: (Buffer.isBuffer(b) && b.length > MAX)\n        ? 'La grabación es demasiado larga. Hable menos de 30 segundos.'\n        : 'No se recibió audio. Intente de nuevo.' };\n    return [null, msg];\n}\nmsg.url = (env.get('VOZ_URL') || 'http://voz:8300') + '/transcribir';\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/octet-stream' };\nmsg.requestTimeout = 90000;      // Whisper en la Pi tarda unos segundos; el LLM no interviene aqui\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 300,
+        "wires": [
+            [
+                "voz_http_escuchar"
+            ],
+            [
+                "voz_out_escuchar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_http_escuchar",
+        "type": "http request",
+        "z": "chat_tab",
+        "name": "POST voz /transcribir",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 680,
+        "y": 280,
+        "wires": [
+            [
+                "voz_resp_escuchar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_resp_escuchar",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Texto para la pagina",
+        "func": "// Traduce la respuesta del servicio de voz a lo que espera la pagina.\nconst s = msg.statusCode;\nconst d = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nlet out;\nif (s === 200 && typeof d.texto === 'string') {\n    out = { ok: true, texto: d.texto };\n    node.status({ fill: 'green', shape: 'dot', text: 'transcribio ' + new Date().toLocaleTimeString() });\n} else if (s === 413) {\n    out = { ok: false, error: 'La grabación es demasiado larga. Hable menos de 30 segundos.' };\n} else if (s === 415) {\n    out = { ok: false, error: 'No pude leer ese audio. Intente de nuevo o escriba su pregunta.' };\n} else if (s === 503) {\n    out = { ok: false, error: 'La voz todavía se está preparando (descargando los modelos). Escriba su pregunta por ahora.' };\n} else {\n    out = { ok: false, error: 'El servicio de voz no está disponible en este momento. Escriba su pregunta.' };\n    node.status({ fill: 'red', shape: 'ring', text: 'no disponible: ' + s });\n    node.warn('Voz no disponible: ' + s + ' ' + String(msg.payload).slice(0, 200));\n}\nmsg.statusCode = 200;\nmsg.headers = { 'Cache-Control': 'no-store' };\nmsg.payload = out;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 280,
+        "wires": [
+            [
+                "voz_out_escuchar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_out_escuchar",
+        "type": "http response",
+        "z": "chat_tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1130,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "voz_in_hablar",
+        "type": "http in",
+        "z": "chat_tab",
+        "name": "POST /asistente/voz/hablar",
+        "url": "/asistente/voz/hablar",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "voz_prep_hablar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_prep_hablar",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Validar texto",
+        "func": "// Texto de la respuesta del agente -> servicio de voz (Piper). Devuelve un WAV.\nconst p = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nconst texto = (typeof p.texto === 'string') ? p.texto.trim().slice(0, 2000) : '';\nif (!texto) {\n    msg.statusCode = 400;\n    msg.headers = { 'Cache-Control': 'no-store' };\n    msg.payload = { ok: false, error: 'texto vacio' };\n    return [null, msg];\n}\nmsg.url = (env.get('VOZ_URL') || 'http://voz:8300') + '/hablar';\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = { texto };\nmsg.requestTimeout = 90000;\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 400,
+        "wires": [
+            [
+                "voz_http_hablar"
+            ],
+            [
+                "voz_out_hablar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_http_hablar",
+        "type": "http request",
+        "z": "chat_tab",
+        "name": "POST voz /hablar",
+        "method": "POST",
+        "ret": "bin",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 680,
+        "y": 380,
+        "wires": [
+            [
+                "voz_resp_hablar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_resp_hablar",
+        "type": "function",
+        "z": "chat_tab",
+        "name": "Audio para la pagina",
+        "func": "const s = msg.statusCode;\nif (s === 200 && Buffer.isBuffer(msg.payload) && msg.payload.length > 44) {\n    msg.headers = { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' };\n    return msg;\n}\n// Sin voz la respuesta sigue escrita en pantalla: la pagina solo avisa que no pudo leerla.\nnode.warn('Voz no disponible para hablar: ' + s);\nnode.status({ fill: 'red', shape: 'ring', text: 'no disponible: ' + s });\nmsg.statusCode = 503;\nmsg.headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };\nmsg.payload = { ok: false, error: 'voz no disponible' };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 380,
+        "wires": [
+            [
+                "voz_out_hablar"
+            ]
+        ]
+    },
+    {
+        "id": "voz_out_hablar",
+        "type": "http response",
+        "z": "chat_tab",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 1130,
+        "y": 400,
+        "wires": []
     }
 ]

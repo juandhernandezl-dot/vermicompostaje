@@ -68,6 +68,23 @@ function credencialDashValida(cabecera) {
     return ok;
 }
 
+// HTTPS opcional: si existen /certs/cert.pem y /certs/key.pem (el compose monta
+// DATOS_DIR/certs, creados con scripts/crear_certificado.sh) Node-RED sirve SOLO por
+// HTTPS. Sin esos archivos sigue en HTTP como antes. Hace falta HTTPS para que el
+// navegador deje usar el microfono del Asistente (solo da getUserMedia en HTTPS o
+// localhost). Si los archivos existen pero fallan, no se arranca en silencio por HTTP:
+// el error sale en el log y Node-RED cae a HTTP con aviso.
+let HTTPS = undefined;
+try {
+    const fs = require("fs");
+    if (fs.existsSync("/certs/cert.pem") && fs.existsSync("/certs/key.pem")) {
+        HTTPS = { key: fs.readFileSync("/certs/key.pem"), cert: fs.readFileSync("/certs/cert.pem") };
+        console.log("[https] certificado encontrado: Node-RED sirve por HTTPS");
+    }
+} catch (e) {
+    console.warn("[https] no se pudo leer el certificado (" + e.message + "): se sirve por HTTP");
+}
+
 module.exports = {
 
 /*******************************************************************************
@@ -134,6 +151,9 @@ module.exports = {
      * See http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener
      * for details of its contents.
      */
+
+    /** Activado arriba (variable HTTPS) solo si existen los certificados */
+    https: HTTPS,
 
     /** Option 1: static object */
     //https: {

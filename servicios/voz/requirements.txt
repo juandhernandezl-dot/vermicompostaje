@@ -1,0 +1,5 @@
+faster-whisper>=1.1,<2
+piper-tts>=1.4,<2
+# PyAV: faster-whisper 1.2.1 falla con av 19 ("open() got an unexpected keyword argument
+# 'metadata_errors'"). Probado: 15.1 y 16.1 decodifican bien el webm del navegador.
+av>=15,<17

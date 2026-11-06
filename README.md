@@ -1,6 +1,6 @@
 # Vermicompostaje automatizado — HuertoLab UAO
 
-Control de humedad por zona de una cama de vermicompost: sensores de suelo SN‑3002 (Modbus RS‑485), 3 electroválvulas manejadas por un ESP32, control **RL / PI / MANUAL** por zona, dashboard en Node‑RED, agente conversacional local (Ollama, terminal) y un receptor de laboratorio por MQTT.
+Control de humedad por zona de una cama de vermicompost: sensores de suelo SN‑3002 (Modbus RS‑485), 3 electroválvulas manejadas por un ESP32, control **RL / PI / MANUAL** por zona, dashboard en Node‑RED, agente conversacional local (Ollama; terminal y página Asistente con voz) y un receptor de laboratorio por MQTT.
 
 > **Estado (27 oct 2026):** todo el software está probado contra la **planta simulada**, que ejecuta el firmware real del ESP32 compilado para el PC. Faltan tres cosas: la prueba con hardware real, la ejecución de los contenedores en la Pi y la **calibración de los sensores**. Ver [Qué está verificado](#qué-está-verificado-y-qué-no).
 
@@ -53,6 +53,7 @@ servicios/
   actuadores/             puente HTTP ↔ ESP32 (único dueño del USB) y registro de riegos
   control/                RL / PI / MANUAL por zona, árbitro del modo (control.json)
   agente/                 agente conversacional: terminal (chat.py) y página Asistente del dashboard (API interna /chat)
+  voz/                    Whisper (escuchar) y Piper (hablar) para la página Asistente (API interna :8300)
 nodered/                  flujos del dashboard y lotes (imagen con los nodos ya instalados)
 firmware/
   actuador_valvulas/      firmware del ESP32, compatible con el puente
@@ -60,7 +61,7 @@ firmware/
 simulador/                simulador multizona v3 (única copia), tablas RL, planta_simulada.py
 receptor_lab/             receptor de laboratorio (PC): Linux y Windows
 pruebas/                  prueba integrada del stack contra la planta simulada
-scripts/                  respaldo de MongoDB
+scripts/                  respaldo de MongoDB, hash de contraseñas y certificado HTTPS
 docs/                     guías y contratos
 ```
 

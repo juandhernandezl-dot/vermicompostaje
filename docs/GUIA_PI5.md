@@ -185,6 +185,37 @@ La página llama a `POST /chat` del contenedor `agente` en `:8200`, solo dentro 
 docker compose exec agente python -c "import json,urllib.request as u; r=u.urlopen(u.Request('http://127.0.0.1:8200/chat', json.dumps({'chat_id':'prueba-pi-01','texto':'¿cómo está la zona 1?'}).encode(), {'Content-Type':'application/json'})); print(json.load(r)['respuesta'])"
 ```
 
+### Voz: hablarle al asistente
+
+La página **Asistente** tiene un botón **🎤 Hablar**: graba, Whisper lo pasa a texto, el agente responde igual que con texto y, si la pregunta fue hablada, Piper lee la respuesta en voz alta. Una pregunta escrita se responde solo en texto.
+
+**Paso 1: HTTPS (obligatorio para el micrófono).** Los navegadores solo dejan usar el micrófono en páginas `https://` (o `localhost`). Con el dashboard en `http://` el botón avisa «El micrófono solo funciona en una dirección segura».
+
+```bash
+bash scripts/crear_certificado.sh                    # crea el certificado en $DATOS_DIR/certs (fuera del repo)
+docker compose up -d --force-recreate nodered
+docker compose logs nodered | grep "\[https\]"      # debe decir: certificado encontrado
+```
+
+Desde ese momento el puerto de Node-RED responde **solo por HTTPS**: `https://<IP de la Pi>:<NODERED_PUERTO>/dashboard`. El `http://` de antes deja de funcionar (actualiza los marcadores). La primera vez cada celular muestra «la conexión no es privada» porque el certificado lo firmaste tú: Avanzado → Continuar. Entra por una IP o nombre que el certificado cubra (el script incluye el nombre y las IP de la Pi; agrega otros como argumento: `bash scripts/crear_certificado.sh 192.168.1.30 huerto.local`). Si el script dice que no puede escribir en `certs`, Docker creó esa carpeta como root: `sudo chown -R $USER ../vermi-datos/certs`.
+
+**Paso 2: levantar la voz.**
+
+```bash
+docker compose --profile agente up -d --build
+docker compose logs -f voz        # la primera vez baja Whisper "small" (~0.5 GB) y la voz de Piper; necesita internet
+```
+
+Hasta que el log diga `Whisper listo` y `Voz de Piper lista`, el botón responde «La voz todavía se está preparando». Los modelos quedan en el volumen `voz_modelos` y no se vuelven a bajar (`docker compose down` no los borra; `down -v` sí).
+
+**Criterio de éxito:** desde el celular, en `https://…/dashboard/asistente`, tocar **🎤 Hablar**, decir «abre la válvula de la zona dos por un minuto» y **⏹ Terminar**: aparece lo que entendió como mensaje, el asistente pide confirmación **por voz y con los botones** y, al tocar **Sí, hazlo**, abre. El **Sí/No se confirma siempre con los botones, nunca por voz**: un error de transcripción no puede confirmar una válvula.
+
+- Una grabación dura como máximo 30 s (la página corta a los 28 s).
+- Si la voz está apagada o falla, la página lo dice y el chat escrito sigue funcionando; las respuestas no se pierden, solo no se leen.
+- Memoria: Whisper "small" usa ~1 GB, además del modelo del agente. Si la Pi se queda corta (`docker stats --no-stream`), pon `VOZ_WHISPER=base` en `.env` y `docker compose --profile agente up -d`.
+- Para ver qué entendió Whisper: `docker compose logs voz | grep transcrito`.
+- **No está medido todavía:** la calidad de Whisper con el ruido real del huerto y cuánto tarda cada paso en la Pi. Para la tesis conviene probar unas 20 frases (órdenes y preguntas) y anotar cuántas se transcriben bien y cuántos segundos pasan entre soltar el botón y oír la respuesta.
+
 ## 8. Receptor del laboratorio contra la simulación
 
 En el PC: `./dist/ReceptorVermicompost --sim` (ver [GUIA_PC.md](GUIA_PC.md)). Las lecturas llegan con el prefijo `uao/vermicompost/sim/...`. Los lotes de simulación se guardan en `~/lotes_respaldo_sim`, separados de los reales. Requiere que la Pi tenga internet (HiveMQ).
@@ -234,4 +265,7 @@ cd ~/vermi-stack && docker compose up -d      # el stack viejo con sus datos ori
 | `!reset` da error de sintaxis | Docker Compose < 2.24: `sudo apt update && sudo apt install docker-compose-plugin`. |
 | El puente dice `sin puerto ... reintentando` | `planta-simulada` no arrancó: `docker compose logs planta`. |
 | El agente responde "no puedo pensar bien" | Ollama sigue descargando o cargando el modelo; las órdenes funcionan igual. |
+| El botón de voz dice «solo funciona en una dirección segura» | Estás entrando por `http://`. Ver *Voz*, paso 1: certificado y `https://`. |
+| El celular dice «no tengo permiso para usar el micrófono» | Permiso denegado en el navegador: candado junto a la dirección → Micrófono → Permitir. |
+| «La voz todavía se está preparando» | `voz` sigue bajando los modelos (`docker compose logs -f voz`) o no tiene internet; reintenta cada minuto. |
 | El dashboard marca la humedad en rojo | Sus rangos (70–85 %) no son % VWC; ver *Riesgos conocidos* del README. |

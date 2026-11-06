@@ -45,8 +45,11 @@ services:
       NODERED_ADMIN_HASH: ${NODERED_ADMIN_HASH:-}
       NODERED_DASH_USUARIO: ${NODERED_DASH_USUARIO:-}
       NODERED_DASH_HASH: ${NODERED_DASH_HASH:-}
+      VOZ_URL: http://voz:8300
     volumes:
       - ./nodered:/data
+      # Certificado HTTPS (opcional; fuera del repo para no subir la llave privada).
+      - ${DATOS_DIR:-../vermi-datos}/certs:/certs:ro
     ports:
       # Si el stack del huerto (huerto-bot, network_mode: host) corre en la
       # misma Pi, su Node-RED ya ocupa el 1880: pon NODERED_PUERTO=1881 en .env.
@@ -155,6 +158,30 @@ services:
       retries: 3
       start_period: 20s
 
+  voz:
+    build: ./servicios/voz
+    container_name: voz
+    restart: unless-stopped
+    profiles: [agente]
+    # Whisper "small" en int8 usa ~1 GB. Si la Pi se queda corta de RAM con el LLM
+    # cargado, pon VOZ_WHISPER=base en .env (menos preciso, la mitad de peso).
+    mem_limit: ${VOZ_MEM:-1536m}
+    environment:
+      <<: *tz
+      VOZ_WHISPER: ${VOZ_WHISPER:-small}
+      VOZ_PIPER: ${VOZ_PIPER:-es_MX-claude-high}
+    volumes:
+      - voz_modelos:/modelos       # los modelos se bajan una vez y quedan aqui
+    # Sin "ports:": solo Node-RED lo alcanza (http://voz:8300).
+    healthcheck:
+      # Vivo = el servidor responde. NO exige los modelos: la primera vez se bajan
+      # ~0.5 GB y no queremos marcar "unhealthy" mientras tanto (/salud los detalla).
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8300/salud', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -180,3 +207,4 @@ services:
 
 volumes:
   ollama_data:
+  voz_modelos:
